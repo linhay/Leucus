@@ -1,0 +1,68 @@
+import AppKit
+import CanvasTerminalKit
+import SwiftUI
+
+@main
+@MainActor
+struct CanvasTerminalExampleApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
+
+    init() {
+        NSWindow.allowsAutomaticWindowTabbing = false
+    }
+
+    var body: some Scene {
+        Window("CanvasTerminal Example", id: "main") {
+            TerminalRootView()
+                .background(WindowTabbingDisabler())
+        }
+        .defaultSize(width: 1200, height: 820)
+    }
+}
+
+@MainActor
+private struct TerminalRootView: View {
+    @State private var terminal = SimpleTerminal(
+        options: .init(
+            workingDirectory: FileManager.default.homeDirectoryForCurrentUser.path,
+            fontSize: 14,
+            title: "Canvas Terminal"
+        )
+    )
+
+    var body: some View {
+        SimpleTerminalView(terminal: terminal)
+            .background(.clear)
+    }
+}
+
+private struct WindowTabbingDisabler: NSViewRepresentable {
+    func makeNSView(context: Context) -> WindowTabbingView {
+        WindowTabbingView()
+    }
+
+    func updateNSView(_ nsView: WindowTabbingView, context: Context) {
+        nsView.disallowTabbing()
+    }
+}
+
+private final class WindowTabbingView: NSView, NSWindowDelegate {
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        disallowTabbing()
+    }
+
+    func disallowTabbing() {
+        guard let window else { return }
+        window.tabbingMode = .disallowed
+        window.identifier = NSUserInterfaceItemIdentifier("main")
+        if window.delegate !== self {
+            window.delegate = self
+        }
+    }
+
+    func windowShouldClose(_ sender: NSWindow) -> Bool {
+        sender.orderOut(nil)
+        return false
+    }
+}

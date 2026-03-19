@@ -3,14 +3,18 @@ SHELL := /bin/bash
 .SHELLFLAGS := -e -u -c -o pipefail
 
 .DEFAULT_GOAL := help
-.PHONY: help build run-demo
+.PHONY: help build test open-example
 
 help:
 	@echo "make build                       # swift build"
-	@echo "make run-demo                    # swift run CanvasTerminalDemo"
+	@echo "make test                        # swift test"
+	@echo "make open-example                # open external Example Xcode project"
 
 build:
 	@swift build
 
-run-demo:
-	@swift run CanvasTerminalDemo
+test:
+	@swift test
+
+open-example:
+	@open Example/CanvasTerminalExample.xcodeproj
