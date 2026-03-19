@@ -1,0 +1,5 @@
+#!/usr/bin/env bash
+
+# Ghostty build step invokes SwiftLint in its app target.
+# We only need libghostty artifacts, so we no-op this command.
+exit 0
