@@ -1,9 +1,16 @@
 import GhosttyTerminal
+import InfiniteCanvasKit
 import SwiftUI
 
 public enum CanvasTerminalKit {
-  public static let version = "0.2.4"
+  public static let version = "0.3.0"
 }
+
+public typealias InfiniteCanvasViewport = InfiniteCanvasKit.InfiniteCanvasViewport
+public typealias CanvasNodeCard = InfiniteCanvasKit.CanvasNodeCard
+#if canImport(AppKit) && !canImport(UIKit)
+public typealias InfiniteCanvasView = InfiniteCanvasKit.InfiniteCanvasView
+#endif
 
 public struct SimpleTerminalOptions: Sendable, Equatable {
   public var workingDirectory: String?

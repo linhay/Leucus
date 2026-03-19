@@ -4,7 +4,7 @@ import Testing
 struct CanvasTerminalKitTests {
   @Test
   func versionIsUpdatedForGhosttyIntegration() {
-    #expect(CanvasTerminalKit.version == "0.2.4")
+    #expect(CanvasTerminalKit.version == "0.3.0")
   }
 
   @Test
