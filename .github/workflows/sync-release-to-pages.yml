@@ -1,0 +1,160 @@
+name: Sync Release Assets To Pages
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to sync (empty = latest release)"
+        required: false
+        type: string
+
+permissions:
+  contents: write
+
+concurrency:
+  group: sync-release-to-pages
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Resolve release
+        id: release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+
+          if [[ "${GITHUB_EVENT_NAME}" == "release" ]]; then
+            release_id="$(jq -r '.release.id' "${GITHUB_EVENT_PATH}")"
+            release_tag="$(jq -r '.release.tag_name' "${GITHUB_EVENT_PATH}")"
+          else
+            requested_tag="${{ inputs.release_tag }}"
+            if [[ -n "${requested_tag}" ]]; then
+              release_json="$(
+                curl -fsSL \
+                  -H "Authorization: Bearer ${GH_TOKEN}" \
+                  -H "Accept: application/vnd.github+json" \
+                  "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/tags/${requested_tag}"
+              )"
+            else
+              release_json="$(
+                curl -fsSL \
+                  -H "Authorization: Bearer ${GH_TOKEN}" \
+                  -H "Accept: application/vnd.github+json" \
+                  "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/latest"
+              )"
+            fi
+            release_id="$(jq -r '.id' <<< "${release_json}")"
+            release_tag="$(jq -r '.tag_name' <<< "${release_json}")"
+          fi
+
+          if [[ -z "${release_id}" || "${release_id}" == "null" ]]; then
+            echo "Failed to resolve release id."
+            exit 1
+          fi
+
+          echo "release_id=${release_id}" >> "${GITHUB_OUTPUT}"
+          echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
+          echo "Resolved release: ${release_tag} (${release_id})"
+
+      - name: Download appcast and zip assets
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_ID: ${{ steps.release.outputs.release_id }}
+        run: |
+          set -euo pipefail
+
+          mkdir -p release-assets
+          assets_api="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100"
+          curl -fsSL \
+            -H "Authorization: Bearer ${GH_TOKEN}" \
+            -H "Accept: application/vnd.github+json" \
+            "${assets_api}" \
+            -o release-assets/assets.json
+
+          jq -r '.[] | [.name, .url] | @tsv' release-assets/assets.json | while IFS=$'\t' read -r asset_name asset_api_url; do
+            case "${asset_name}" in
+              appcast.xml|*.zip)
+                echo "Downloading ${asset_name}"
+                curl -fsSL \
+                  -H "Authorization: Bearer ${GH_TOKEN}" \
+                  -H "Accept: application/octet-stream" \
+                  "${asset_api_url}" \
+                  -o "release-assets/${asset_name}"
+                ;;
+            esac
+          done
+
+          if [[ ! -f "release-assets/appcast.xml" ]]; then
+            echo "Missing required release asset: appcast.xml"
+            exit 1
+          fi
+
+      - name: Sync files to gh-pages
+        env:
+          RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
+        run: |
+          set -euo pipefail
+
+          git fetch origin gh-pages:gh-pages
+          mkdir -p .tmp
+          git worktree add .tmp/gh-pages gh-pages
+
+          mkdir -p .tmp/gh-pages/releases
+          cp release-assets/appcast.xml .tmp/gh-pages/appcast.xml
+
+          if compgen -G "release-assets/*.zip" > /dev/null; then
+            cp release-assets/*.zip .tmp/gh-pages/releases/
+          else
+            echo "No zip asset found in this release. Only appcast.xml will be updated."
+          fi
+
+          if [[ ! -f .tmp/gh-pages/index.html ]]; then
+            cat > .tmp/gh-pages/index.html <<'EOF'
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Leucus Releases</title>
+</head>
+<body>
+  <h1>Leucus Releases</h1>
+  <p>Sparkle appcast: <a href="/Leucus/appcast.xml">appcast.xml</a></p>
+  <p>Release packages are under <code>/Leucus/releases/</code>.</p>
+</body>
+</html>
+EOF
+          fi
+
+          if [[ ! -f .tmp/gh-pages/releases/.gitkeep ]]; then
+            touch .tmp/gh-pages/releases/.gitkeep
+          fi
+
+          cd .tmp/gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+          git add appcast.xml releases index.html
+          if git diff --cached --quiet; then
+            echo "No changes to publish."
+            exit 0
+          fi
+
+          git commit -m "chore(release): sync ${RELEASE_TAG} assets to gh-pages"
+          git push origin HEAD:gh-pages
+
+      - name: Cleanup worktree
+        if: always()
+        run: |
+          git worktree remove .tmp/gh-pages --force || true

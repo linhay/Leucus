@@ -8,15 +8,29 @@
 
 /* Begin PBXBuildFile section */
 		509321E02F646FC40004661A /* CanvasKit in Frameworks */ = {isa = PBXBuildFile; productRef = 509321DF2F646FC40004661A /* CanvasKit */; };
+		50A7D00131E74001004661A1 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 50A7D00331E74001004661A1 /* Sparkle */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		509321CD2F645FC30004661A /* Leucus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Leucus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		50A7D00431E74001004661A1 /* Exceptions for "Leucus" folder in "Leucus" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 509321CC2F645FC30004661A /* Leucus */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		509321CF2F645FC30004661A /* Leucus */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				50A7D00431E74001004661A1 /* Exceptions for "Leucus" folder in "Leucus" target */,
+			);
 			path = Leucus;
 			sourceTree = "<group>";
 		};
@@ -28,6 +42,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				509321E02F646FC40004661A /* CanvasKit in Frameworks */,
+				50A7D00131E74001004661A1 /* Sparkle in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -79,6 +94,7 @@
 			name = Leucus;
 			packageProductDependencies = (
 				509321DF2F646FC40004661A /* CanvasKit */,
+				50A7D00331E74001004661A1 /* Sparkle */,
 			);
 			productName = Leucus;
 			productReference = 509321CD2F645FC30004661A /* Leucus.app */;
@@ -110,6 +126,7 @@
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
 				509321F02F647A000004661A /* XCLocalSwiftPackageReference ".." */,
+				50A7D00231E74001004661A1 /* XCRemoteSwiftPackageReference "Sparkle" */,
 			);
 			preferredProjectObjectVersion = 77;
 			projectDirPath = "";
@@ -273,14 +290,17 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Leucus;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Leucus/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				LEUCUS_APPCAST_URL = "https://$(LEUCUS_GITHUB_OWNER).github.io/$(LEUCUS_GITHUB_REPO)/appcast.xml";
+				LEUCUS_GITHUB_OWNER = linhay;
+				LEUCUS_GITHUB_REPO = Leucus;
+				LEUCUS_SPARKLE_PUBLIC_KEY = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.linhay.Leucus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -305,14 +325,17 @@
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
-				GENERATE_INFOPLIST_FILE = YES;
-				INFOPLIST_KEY_CFBundleDisplayName = Leucus;
-				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Leucus/Info.plist;
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
+				LEUCUS_APPCAST_URL = "https://$(LEUCUS_GITHUB_OWNER).github.io/$(LEUCUS_GITHUB_REPO)/appcast.xml";
+				LEUCUS_GITHUB_OWNER = linhay;
+				LEUCUS_GITHUB_REPO = Leucus;
+				LEUCUS_SPARKLE_PUBLIC_KEY = "";
 				PRODUCT_BUNDLE_IDENTIFIER = com.linhay.Leucus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
@@ -355,11 +378,27 @@
 		};
 /* End XCLocalSwiftPackageReference section */
 
+/* Begin XCRemoteSwiftPackageReference section */
+		50A7D00231E74001004661A1 /* XCRemoteSwiftPackageReference "Sparkle" */ = {
+			isa = XCRemoteSwiftPackageReference;
+			repositoryURL = "https://github.com/sparkle-project/Sparkle";
+			requirement = {
+				kind = upToNextMajorVersion;
+				minimumVersion = 2.7.1;
+			};
+		};
+/* End XCRemoteSwiftPackageReference section */
+
 /* Begin XCSwiftPackageProductDependency section */
 		509321DF2F646FC40004661A /* CanvasKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 509321F02F647A000004661A /* XCLocalSwiftPackageReference ".." */;
 			productName = CanvasKit;
+		};
+		50A7D00331E74001004661A1 /* Sparkle */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 50A7D00231E74001004661A1 /* XCRemoteSwiftPackageReference "Sparkle" */;
+			productName = Sparkle;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

@@ -5,8 +5,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private let defaultContentSize = NSSize(width: 1200, height: 820)
     private let minimumContentSize = NSSize(width: 640, height: 420)
     private var window: NSWindow?
+    private let updater = LeucusUpdater()
+    private weak var checkForUpdatesMenuItem: NSMenuItem?
 
     func applicationDidFinishLaunching(_: Notification) {
+        configureMainMenu()
+        updater.startIfConfigured(infoDictionary: Bundle.main.infoDictionary ?? [:])
+        refreshCheckForUpdatesMenuState()
         createOrShowWindow()
     }
 
@@ -25,6 +30,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     func applicationShouldTerminateAfterLastWindowClosed(_: NSApplication) -> Bool {
         false
+    }
+
+    @objc
+    private func checkForUpdates(_: Any?) {
+        updater.checkForUpdates()
     }
 
     private func createOrShowWindow() {
@@ -65,5 +75,60 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             window.setContentSize(defaultContentSize)
             window.center()
         }
+    }
+
+    private func configureMainMenu() {
+        let mainMenu = NSMenu()
+        let appMenuItem = NSMenuItem()
+        mainMenu.addItem(appMenuItem)
+
+        let appMenu = NSMenu(title: "Leucus")
+        appMenuItem.submenu = appMenu
+
+        appMenu.addItem(
+            withTitle: "关于 Leucus",
+            action: #selector(NSApplication.orderFrontStandardAboutPanel(_:)),
+            keyEquivalent: ""
+        )
+        appMenu.addItem(.separator())
+
+        let updateItem = NSMenuItem(
+            title: "检查更新…",
+            action: #selector(checkForUpdates(_:)),
+            keyEquivalent: "u"
+        )
+        updateItem.keyEquivalentModifierMask = [.command, .option]
+        updateItem.target = self
+        appMenu.addItem(updateItem)
+        checkForUpdatesMenuItem = updateItem
+
+        appMenu.addItem(.separator())
+        appMenu.addItem(
+            withTitle: "隐藏 Leucus",
+            action: #selector(NSApplication.hide(_:)),
+            keyEquivalent: "h"
+        )
+        appMenu.addItem(
+            withTitle: "隐藏其他",
+            action: #selector(NSApplication.hideOtherApplications(_:)),
+            keyEquivalent: "h"
+        ).keyEquivalentModifierMask = [.command, .option]
+        appMenu.addItem(
+            withTitle: "显示全部",
+            action: #selector(NSApplication.unhideAllApplications(_:)),
+            keyEquivalent: ""
+        )
+        appMenu.addItem(.separator())
+        appMenu.addItem(
+            withTitle: "退出 Leucus",
+            action: #selector(NSApplication.terminate(_:)),
+            keyEquivalent: "q"
+        )
+
+        NSApp.mainMenu = mainMenu
+    }
+
+    private func refreshCheckForUpdatesMenuState() {
+        checkForUpdatesMenuItem?.isEnabled = updater.isConfigured
     }
 }

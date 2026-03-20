@@ -8,6 +8,52 @@ import Testing
 @MainActor
 struct CanvasKitTests {
   @Test
+  func leucusUpdateFeedURLShouldAcceptValidHTTPAndHTTPS() {
+    #expect(
+      LeucusUpdateConfiguration.normalizedFeedURL(from: "https://example.com/appcast.xml")?
+        .absoluteString == "https://example.com/appcast.xml"
+    )
+    #expect(
+      LeucusUpdateConfiguration.normalizedFeedURL(from: "http://localhost:8000/appcast.xml")?
+        .absoluteString == "http://localhost:8000/appcast.xml"
+    )
+  }
+
+  @Test
+  func leucusUpdateFeedURLShouldRejectInvalidOrUnsupportedSchemes() {
+    #expect(LeucusUpdateConfiguration.normalizedFeedURL(from: nil) == nil)
+    #expect(LeucusUpdateConfiguration.normalizedFeedURL(from: "") == nil)
+    #expect(LeucusUpdateConfiguration.normalizedFeedURL(from: "   ") == nil)
+    #expect(LeucusUpdateConfiguration.normalizedFeedURL(from: "ftp://example.com/feed.xml") == nil)
+    #expect(LeucusUpdateConfiguration.normalizedFeedURL(from: "not-a-url") == nil)
+  }
+
+  @Test
+  func leucusUpdateFeedURLShouldTrimWhitespace() {
+    let url = LeucusUpdateConfiguration.normalizedFeedURL(
+      from: "  https://example.com/leucus/appcast.xml  "
+    )
+    #expect(url?.absoluteString == "https://example.com/leucus/appcast.xml")
+  }
+
+  @Test
+  func leucusUpdatePublicKeyShouldRequireNonEmptyValue() {
+    #expect(
+      !LeucusUpdateConfiguration.hasPublicKey(in: [:])
+    )
+    #expect(
+      !LeucusUpdateConfiguration.hasPublicKey(in: [
+        LeucusUpdateConfiguration.publicKeyInfoKey: "   ",
+      ])
+    )
+    #expect(
+      LeucusUpdateConfiguration.hasPublicKey(in: [
+        LeucusUpdateConfiguration.publicKeyInfoKey: "AbCdEf123",
+      ])
+    )
+  }
+
+  @Test
   func alignButtonStyleShouldUseHighContrastPalette() {
     let button = NSButton(title: "对齐网格", target: nil, action: nil)
     CanvasAlignButtonStyle.apply(to: button)
