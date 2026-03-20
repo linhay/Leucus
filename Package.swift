@@ -71,5 +71,10 @@ let package = Package(
             dependencies: ["TerminalCard"],
             path: "Tests/TerminalCardTests"
         ),
+        .testTarget(
+            name: "FolderCardTests",
+            dependencies: ["FolderCard"],
+            path: "Tests/FolderCardTests"
+        ),
     ]
 )

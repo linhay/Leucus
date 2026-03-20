@@ -91,24 +91,25 @@ public final class FolderBrowserHostView: NSView {
 
   private func setup() {
     wantsLayer = true
-    layer?.backgroundColor = NSColor(calibratedWhite: 0.10, alpha: 0.94).cgColor
+    appearance = NSAppearance(named: .darkAqua)
+    layer?.backgroundColor = FolderBrowserTheme.panelBackground.cgColor
     layer?.cornerRadius = 8
     layer?.masksToBounds = true
 
     toolbar.wantsLayer = true
-    toolbar.layer?.backgroundColor = NSColor(calibratedWhite: 0.17, alpha: 0.98).cgColor
+    toolbar.layer?.backgroundColor = FolderBrowserTheme.toolbarBackground.cgColor
     addSubview(toolbar)
 
     upButton.target = self
     upButton.action = #selector(goUp)
     upButton.bezelStyle = .texturedRounded
     upButton.controlSize = .small
-    upButton.contentTintColor = NSColor(calibratedWhite: 0.92, alpha: 1)
+    upButton.contentTintColor = FolderBrowserTheme.primaryText
     toolbar.addSubview(upButton)
 
     pathLabel.lineBreakMode = .byTruncatingMiddle
     pathLabel.font = .systemFont(ofSize: 11, weight: .medium)
-    pathLabel.textColor = NSColor(calibratedWhite: 0.82, alpha: 1)
+    pathLabel.textColor = FolderBrowserTheme.secondaryText
     toolbar.addSubview(pathLabel)
 
     let column = NSTableColumn(identifier: NSUserInterfaceItemIdentifier("name"))
@@ -119,8 +120,8 @@ public final class FolderBrowserHostView: NSView {
     tableView.rowHeight = 24
     tableView.intercellSpacing = NSSize(width: 0, height: 2)
     tableView.usesAlternatingRowBackgroundColors = false
-    tableView.backgroundColor = .clear
-    tableView.style = .sourceList
+    tableView.backgroundColor = FolderBrowserTheme.listBackground
+    tableView.style = .plain
     tableView.selectionHighlightStyle = .regular
     tableView.delegate = self
     tableView.dataSource = self
@@ -129,7 +130,8 @@ public final class FolderBrowserHostView: NSView {
     tableView.doubleAction = #selector(openSelection)
 
     scrollView.borderType = .noBorder
-    scrollView.drawsBackground = false
+    scrollView.drawsBackground = true
+    scrollView.backgroundColor = FolderBrowserTheme.listBackground
     scrollView.hasVerticalScroller = true
     scrollView.documentView = tableView
     addSubview(scrollView)
@@ -179,12 +181,12 @@ extension FolderBrowserHostView: NSTableViewDataSource, NSTableViewDelegate {
       let iconView = NSImageView()
       iconView.translatesAutoresizingMaskIntoConstraints = false
       iconView.symbolConfiguration = NSImage.SymbolConfiguration(pointSize: 12, weight: .regular)
-      iconView.contentTintColor = NSColor(calibratedWhite: 0.82, alpha: 1)
+      iconView.contentTintColor = FolderBrowserTheme.iconTint
       let textField = NSTextField(labelWithString: "")
       textField.translatesAutoresizingMaskIntoConstraints = false
       textField.lineBreakMode = .byTruncatingMiddle
       textField.font = .systemFont(ofSize: 12)
-      textField.textColor = NSColor(calibratedWhite: 0.88, alpha: 1)
+      textField.textColor = FolderBrowserTheme.primaryText
       cell.addSubview(iconView)
       cell.addSubview(textField)
       NSLayoutConstraint.activate([
@@ -216,8 +218,22 @@ extension FolderBrowserHostView: NSTableViewDataSource, NSTableViewDelegate {
     return cell
   }
 
+  public func tableView(_: NSTableView, rowViewForRow _: Int) -> NSTableRowView? {
+    FolderBrowserRowView()
+  }
+
   public func tableViewSelectionDidChange(_: Notification) {
     onInteraction?()
+  }
+}
+
+private final class FolderBrowserRowView: NSTableRowView {
+  override func drawSelection(in dirtyRect: NSRect) {
+    guard selectionHighlightStyle != .none else { return }
+    let selectionPath = NSBezierPath(roundedRect: bounds.insetBy(dx: 2, dy: 1), xRadius: 6, yRadius: 6)
+    FolderBrowserTheme.selectionBackground.setFill()
+    selectionPath.fill()
+    super.drawSelection(in: dirtyRect)
   }
 }
 #endif
