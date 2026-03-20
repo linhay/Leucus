@@ -7,5 +7,15 @@
     <link>https://linhay.github.io/Leucus/appcast.xml</link>
     <description>Leucus release feed</description>
     <language>en</language>
+    <item>
+      <title>Leucus 0.0.1</title>
+      <pubDate>Fri, 20 Mar 2026 16:01:57 +0000</pubDate>
+      <enclosure
+        url="https://github.com/linhay/Leucus/releases/download/v0.0.1/Leucus-0.0.1.zip"
+        sparkle:version="1"
+        sparkle:shortVersionString="0.0.1"
+        length="9381181"
+        type="application/octet-stream" />
+    </item>
   </channel>
 </rss>
