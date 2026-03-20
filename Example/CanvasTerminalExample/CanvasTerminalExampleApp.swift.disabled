@@ -1,5 +1,5 @@
 import AppKit
-import CanvasTerminalKit
+import CanvasKit
 import SwiftUI
 
 @main

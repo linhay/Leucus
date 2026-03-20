@@ -1,10 +1,9 @@
 import AppKit
-import CanvasTerminalKit
-import InfiniteCanvasKit
+import CanvasKit
 
 @MainActor
 final class ViewController: NSViewController {
-    private lazy var canvasView = InfiniteCanvasView()
+    private var workspaceView: CanvasWorkspaceView?
     private var terminateObserver: NSObjectProtocol?
 
     override func loadView() {
@@ -29,31 +28,44 @@ final class ViewController: NSViewController {
     }
 
     private func configureCanvasView() {
-        canvasView.translatesAutoresizingMaskIntoConstraints = false
+        guard #available(macOS 14.0, *) else { return }
+        let workspaceView = CanvasWorkspaceView()
+        self.workspaceView = workspaceView
+        let canvasView = workspaceView.canvasView
+        workspaceView.translatesAutoresizingMaskIntoConstraints = false
         let restored = canvasView.configurePersistence(
             key: "canvas-terminal-example-main",
             restoreOnConfigure: true
         )
         if !restored {
             canvasView.nodes = [
-                CanvasNodeCard(title: "Node A", position: CGPoint(x: -220, y: -120)),
+                CanvasNodeCard.terminal(
+                    at: CGPoint(x: -220, y: -120),
+                    workingDirectory: FileManager.default.homeDirectoryForCurrentUser.path,
+                    title: "Main"
+                ),
                 CanvasNodeCard(title: "Node B", position: CGPoint(x: 140, y: -30)),
-                CanvasNodeCard(title: "Node C", position: CGPoint(x: -10, y: 180)),
+                CanvasNodeCard.terminal(
+                    at: CGPoint(x: -10, y: 180),
+                    workingDirectory: FileManager.default.homeDirectoryForCurrentUser.path,
+                    title: "Shell"
+                ),
             ]
         }
-        view.addSubview(canvasView)
+        view.addSubview(workspaceView)
 
         NSLayoutConstraint.activate([
-            canvasView.topAnchor.constraint(equalTo: view.topAnchor),
-            canvasView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
-            canvasView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
-            canvasView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
+            workspaceView.topAnchor.constraint(equalTo: view.topAnchor),
+            workspaceView.leadingAnchor.constraint(equalTo: view.leadingAnchor),
+            workspaceView.trailingAnchor.constraint(equalTo: view.trailingAnchor),
+            workspaceView.bottomAnchor.constraint(equalTo: view.bottomAnchor),
         ])
     }
 
     private func activateCanvas() {
         view.window?.title = "Infinite Canvas Example"
-        view.window?.makeFirstResponder(canvasView)
+        guard #available(macOS 14.0, *), let workspaceView else { return }
+        view.window?.makeFirstResponder(workspaceView.canvasView)
     }
 
     private func observeApplicationTermination() {
@@ -62,7 +74,8 @@ final class ViewController: NSViewController {
             object: nil,
             queue: .main
         ) { [weak self] _ in
-            self?.canvasView.persistNow()
+            guard #available(macOS 14.0, *), let workspaceView = self?.workspaceView else { return }
+            workspaceView.canvasView.persistNow()
         }
     }
 

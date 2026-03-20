@@ -7,6 +7,7 @@ public final class InfiniteCanvasView: NSView {
     didSet {
       needsDisplay = true
       scheduleAutosave()
+      notifyNodeLayoutsChanged()
     }
   }
 
@@ -14,6 +15,7 @@ public final class InfiniteCanvasView: NSView {
     didSet {
       needsDisplay = true
       scheduleAutosave()
+      notifyNodeLayoutsChanged()
     }
   }
 
@@ -21,7 +23,12 @@ public final class InfiniteCanvasView: NSView {
     didSet {
       needsDisplay = true
       scheduleAutosave()
+      notifyNodeLayoutsChanged()
     }
+  }
+
+  public var onNodeLayoutsChanged: (([CanvasNodeLayout]) -> Void)? {
+    didSet { notifyNodeLayoutsChanged() }
   }
 
   public var backgroundColor = NSColor(calibratedWhite: 0.09, alpha: 1) {
@@ -355,6 +362,12 @@ public final class InfiniteCanvasView: NSView {
     drawDotGrid(in: dirtyRect)
     drawCards()
     drawMarqueeIfNeeded()
+    notifyNodeLayoutsChanged()
+  }
+
+  public override func layout() {
+    super.layout()
+    notifyNodeLayoutsChanged()
   }
 
   private func drawDotGrid(in dirtyRect: NSRect) {
@@ -621,6 +634,38 @@ public final class InfiniteCanvasView: NSView {
       width: node.size.width * viewport.scale,
       height: node.size.height * viewport.scale
     )
+  }
+
+  private func contentRect(for node: CanvasNodeCard, frame: CGRect) -> CGRect {
+    guard !isCompact(node: node) else { return .zero }
+    let inset: CGFloat = 6
+    let topInset = headerHeight + inset
+    return CGRect(
+      x: frame.minX + inset,
+      y: frame.minY + inset,
+      width: max(0, frame.width - inset * 2),
+      height: max(0, frame.height - topInset - inset)
+    )
+  }
+
+  private func currentNodeLayouts() -> [CanvasNodeLayout] {
+    nodes.map { node in
+      let frame = viewRect(for: node)
+      let compact = isCompact(node: node)
+      return CanvasNodeLayout(
+        id: node.id,
+        kind: node.kind,
+        title: node.title,
+        workingDirectory: node.workingDirectory,
+        frame: frame,
+        contentFrame: contentRect(for: node, frame: frame),
+        isCompact: compact
+      )
+    }
+  }
+
+  private func notifyNodeLayoutsChanged() {
+    onNodeLayoutsChanged?(currentNodeLayouts())
   }
 
   private func subtitle(for node: CanvasNodeCard) -> String {

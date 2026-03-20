@@ -8,8 +8,12 @@ let package = Package(
     ],
     products: [
         .library(
-            name: "CanvasTerminalKit",
-            targets: ["CanvasTerminalKit"]
+            name: "TerminalCard",
+            targets: ["TerminalCard"]
+        ),
+        .library(
+            name: "CanvasKit",
+            targets: ["CanvasKit"]
         ),
         .library(
             name: "InfiniteCanvasKit",
@@ -24,10 +28,17 @@ let package = Package(
             name: "InfiniteCanvasKit"
         ),
         .target(
-            name: "CanvasTerminalKit",
+            name: "TerminalCard",
+            dependencies: [
+                .product(name: "GhosttyTerminal", package: "libghostty-spm-main"),
+            ],
+            path: "Sources/TerminalCard"
+        ),
+        .target(
+            name: "CanvasKit",
             dependencies: [
                 "InfiniteCanvasKit",
-                .product(name: "GhosttyTerminal", package: "libghostty-spm-main"),
+                "TerminalCard",
             ]
         ),
         .testTarget(
@@ -35,8 +46,9 @@ let package = Package(
             dependencies: ["InfiniteCanvasKit"]
         ),
         .testTarget(
-            name: "CanvasTerminalKitTests",
-            dependencies: ["CanvasTerminalKit"]
+            name: "TerminalCardTests",
+            dependencies: ["TerminalCard"],
+            path: "Tests/TerminalCardTests"
         ),
     ]
 )

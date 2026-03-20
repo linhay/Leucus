@@ -42,6 +42,34 @@ public struct CanvasNodeCard: Sendable, Equatable, Identifiable {
   }
 }
 
+public struct CanvasNodeLayout: Sendable, Equatable {
+  public var id: UUID
+  public var kind: CanvasNodeKind
+  public var title: String
+  public var workingDirectory: String?
+  public var frame: CGRect
+  public var contentFrame: CGRect
+  public var isCompact: Bool
+
+  public init(
+    id: UUID,
+    kind: CanvasNodeKind,
+    title: String,
+    workingDirectory: String?,
+    frame: CGRect,
+    contentFrame: CGRect,
+    isCompact: Bool
+  ) {
+    self.id = id
+    self.kind = kind
+    self.title = title
+    self.workingDirectory = workingDirectory
+    self.frame = frame
+    self.contentFrame = contentFrame
+    self.isCompact = isCompact
+  }
+}
+
 public extension CanvasNodeCard {
   static let minimumSize = CGSize(width: 160, height: 120)
   private static let minimumEpsilon: CGFloat = 0.001

@@ -1,12 +1,7 @@
 import Testing
-@testable import CanvasTerminalKit
+@testable import TerminalCard
 
-struct CanvasTerminalKitTests {
-  @Test
-  func versionIsUpdatedForGhosttyIntegration() {
-    #expect(CanvasTerminalKit.version == "0.3.0")
-  }
-
+struct TerminalCardTests {
   @Test
   @MainActor
   func simpleTerminalAppliesProvidedOptions() {
@@ -30,3 +25,4 @@ struct CanvasTerminalKitTests {
     }
   }
 }
+

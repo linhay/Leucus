@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		509321E02F646FC40004661A /* CanvasTerminalKit in Frameworks */ = {isa = PBXBuildFile; productRef = 509321DF2F646FC40004661A /* CanvasTerminalKit */; };
+		509321E02F646FC40004661A /* CanvasKit in Frameworks */ = {isa = PBXBuildFile; productRef = 509321DF2F646FC40004661A /* CanvasKit */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -27,7 +27,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				509321E02F646FC40004661A /* CanvasTerminalKit in Frameworks */,
+				509321E02F646FC40004661A /* CanvasKit in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -78,7 +78,7 @@
 			);
 			name = CanvasTerminalExample;
 			packageProductDependencies = (
-				509321DF2F646FC40004661A /* CanvasTerminalKit */,
+				509321DF2F646FC40004661A /* CanvasKit */,
 			);
 			productName = CanvasTerminalExample;
 			productReference = 509321CD2F645FC30004661A /* CanvasTerminalExample.app */;
@@ -354,10 +354,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
-		509321DF2F646FC40004661A /* CanvasTerminalKit */ = {
+		509321DF2F646FC40004661A /* CanvasKit */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 509321F02F647A000004661A /* XCLocalSwiftPackageReference ".." */;
-			productName = CanvasTerminalKit;
+			productName = CanvasKit;
 		};
 /* End XCSwiftPackageProductDependency section */
 	};

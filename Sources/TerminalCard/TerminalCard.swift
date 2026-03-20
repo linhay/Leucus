@@ -1,16 +1,9 @@
 import GhosttyTerminal
-import InfiniteCanvasKit
 import SwiftUI
 
-public enum CanvasTerminalKit {
-  public static let version = "0.3.0"
+public enum TerminalCardInfo {
+  public static let version = "0.1.0"
 }
-
-public typealias InfiniteCanvasViewport = InfiniteCanvasKit.InfiniteCanvasViewport
-public typealias CanvasNodeCard = InfiniteCanvasKit.CanvasNodeCard
-#if canImport(AppKit) && !canImport(UIKit)
-public typealias InfiniteCanvasView = InfiniteCanvasKit.InfiniteCanvasView
-#endif
 
 public struct SimpleTerminalOptions: Sendable, Equatable {
   public var workingDirectory: String?
@@ -69,6 +62,45 @@ public struct SimpleTerminalView: View {
 
 #if canImport(AppKit) && !canImport(UIKit)
 import AppKit
+
+@MainActor
+@available(macOS 14.0, *)
+public final class SimpleTerminalHostView: NSView {
+  public let terminal: SimpleTerminal
+  public let terminalView: TerminalView
+
+  public init(terminal: SimpleTerminal = .init()) {
+    self.terminal = terminal
+    terminalView = TerminalView(frame: .zero)
+    super.init(frame: .zero)
+    wantsLayer = true
+    layer?.masksToBounds = true
+    addSubview(terminalView)
+    configure(terminalView)
+  }
+
+  @available(*, unavailable)
+  required init?(coder: NSCoder) {
+    nil
+  }
+
+  public override func layout() {
+    super.layout()
+    terminalView.frame = bounds
+    terminalView.fitToSize()
+    if window?.firstResponder !== terminalView {
+      _ = window?.makeFirstResponder(terminalView)
+    }
+  }
+
+  private func configure(_ view: TerminalView) {
+    view.delegate = terminal.state
+    view.configuration = terminal.state.configuration
+    if view.controller !== terminal.state.controller {
+      view.controller = terminal.state.controller
+    }
+  }
+}
 
 @MainActor
 @available(macOS 14.0, *)
