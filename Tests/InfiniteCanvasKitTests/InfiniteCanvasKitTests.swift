@@ -5,6 +5,12 @@ import Testing
 
 struct InfiniteCanvasKitTests {
   @Test
+  func scrollPanMappingShouldKeepHorizontalAndInvertVertical() {
+    let delta = CanvasScrollPanMapping.panDelta(scrollDeltaX: 14, scrollDeltaY: -9)
+    #expect(delta == CGSize(width: 14, height: 9))
+  }
+
+  @Test
   func panShouldAccumulateOffset() {
     var viewport = InfiniteCanvasViewport()
 

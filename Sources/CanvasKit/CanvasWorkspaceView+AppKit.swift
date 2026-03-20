@@ -112,6 +112,9 @@ public final class CanvasWorkspaceView: NSView {
       title: layout.title
     ))
     let host = SimpleTerminalHostView(terminal: terminal)
+    host.onScrollWheelPassthrough = { [weak self] event in
+      self?.canvasView.scrollWheel(with: event)
+    }
     host.layer?.cornerRadius = 8
     host.layer?.masksToBounds = true
     terminalContainer.addSubview(host)

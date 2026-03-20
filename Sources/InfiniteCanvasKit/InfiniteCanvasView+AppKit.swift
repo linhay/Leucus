@@ -349,7 +349,10 @@ public final class InfiniteCanvasView: NSView {
       viewport.zoom(multiplier: factor, anchorInView: anchor, viewportSize: bounds.size)
       return
     }
-    let delta = CGSize(width: -event.scrollingDeltaX, height: event.scrollingDeltaY)
+    let delta = CanvasScrollPanMapping.panDelta(
+      scrollDeltaX: event.scrollingDeltaX,
+      scrollDeltaY: event.scrollingDeltaY
+    )
     viewport.pan(by: delta)
   }
 

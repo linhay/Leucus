@@ -4,12 +4,51 @@ import CoreText
 import GhosttyKit
 import QuartzCore
 
-final class GhosttySurfaceView: NSView, Identifiable {
-  private struct ScrollbarState {
+enum GhosttyScrollWheelRouting {
+  struct ScrollbarState: Equatable {
     let total: UInt64
     let offset: UInt64
     let length: UInt64
+
+    var maxOffset: UInt64 {
+      guard total > length else { return 0 }
+      return total - length
+    }
   }
+
+  static func shouldPassthroughToCanvas(
+    deltaX: CGFloat,
+    deltaY: CGFloat,
+    scrollbar: ScrollbarState?
+  ) -> Bool {
+    if abs(deltaX) > abs(deltaY) {
+      return true
+    }
+
+    guard abs(deltaY) > 0.01 else {
+      return abs(deltaX) > 0.01
+    }
+
+    guard let scrollbar else {
+      return true
+    }
+
+    guard scrollbar.total > scrollbar.length else {
+      return true
+    }
+
+    if deltaY > 0 {
+      return scrollbar.offset >= scrollbar.maxOffset
+    }
+    if deltaY < 0 {
+      return scrollbar.offset == 0
+    }
+    return true
+  }
+}
+
+final class GhosttySurfaceView: NSView, Identifiable {
+  private typealias ScrollbarState = GhosttyScrollWheelRouting.ScrollbarState
 
   @MainActor
   private final class CachedValue<T> {
@@ -96,6 +135,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
     }
   }
   var onFocusChange: ((Bool) -> Void)?
+  var onScrollWheelPassthrough: ((NSEvent) -> Void)?
 
   private var accessibilityPaneIndexHelp: String?
 
@@ -694,7 +734,19 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func scrollWheel(with event: NSEvent) {
-    guard let surface else { return }
+    if GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+      deltaX: event.scrollingDeltaX,
+      deltaY: event.scrollingDeltaY,
+      scrollbar: lastScrollbar
+    ) {
+      onScrollWheelPassthrough?(event)
+      return
+    }
+
+    guard let surface else {
+      onScrollWheelPassthrough?(event)
+      return
+    }
     var scrollX = event.scrollingDeltaX
     var scrollY = event.scrollingDeltaY
     if event.hasPreciseScrollingDeltas {
@@ -1607,11 +1659,7 @@ extension GhosttySurfaceView: @preconcurrency NSServicesMenuRequestor {
 }
 
 final class GhosttySurfaceScrollView: NSView {
-  private struct ScrollbarState {
-    let total: UInt64
-    let offset: UInt64
-    let length: UInt64
-  }
+  private typealias ScrollbarState = GhosttyScrollWheelRouting.ScrollbarState
 
   private let scrollView: NSScrollView
   private let documentView: NSView

@@ -83,6 +83,10 @@ public final class SimpleTerminalHostView: NSView {
   private var lastRefreshSize: CGSize = .zero
   private var pendingRefreshWorkItem: DispatchWorkItem?
   public var isLayoutRefreshSuspended = false
+  public var onScrollWheelPassthrough: ((NSEvent) -> Void)? {
+    get { surfaceView.onScrollWheelPassthrough }
+    set { surfaceView.onScrollWheelPassthrough = newValue }
+  }
 
   public init(terminal: SimpleTerminal? = nil) {
     let resolvedTerminal = terminal ?? .init()

@@ -35,4 +35,92 @@ struct TerminalCardTests {
     #expect(a.runtime === b.runtime)
   }
   #endif
+
+  @Test
+  func terminalScrollRoutesToCanvasWhenNoScrollableRange() {
+    let state = GhosttyScrollWheelRouting.ScrollbarState(total: 20, offset: 0, length: 20)
+
+    #expect(
+      GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: 12,
+        scrollbar: state
+      )
+    )
+    #expect(
+      GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: -12,
+        scrollbar: state
+      )
+    )
+  }
+
+  @Test
+  func terminalScrollRoutesToCanvasOnlyAtMatchingBoundary() {
+    let top = GhosttyScrollWheelRouting.ScrollbarState(total: 100, offset: 0, length: 20)
+    #expect(
+      GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: -10,
+        scrollbar: top
+      )
+    )
+    #expect(
+      !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: 10,
+        scrollbar: top
+      )
+    )
+
+    let bottom = GhosttyScrollWheelRouting.ScrollbarState(total: 100, offset: 80, length: 20)
+    #expect(
+      GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: 10,
+        scrollbar: bottom
+      )
+    )
+    #expect(
+      !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: -10,
+        scrollbar: bottom
+      )
+    )
+  }
+
+  @Test
+  func terminalScrollStaysInTerminalWhenScrollableAndNotAtBoundary() {
+    let middle = GhosttyScrollWheelRouting.ScrollbarState(total: 100, offset: 50, length: 20)
+
+    #expect(
+      !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: 10,
+        scrollbar: middle
+      )
+    )
+    #expect(
+      !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: -10,
+        scrollbar: middle
+      )
+    )
+  }
+
+  @Test
+  func terminalHorizontalScrollRoutesToCanvas() {
+    let middle = GhosttyScrollWheelRouting.ScrollbarState(total: 100, offset: 50, length: 20)
+
+    #expect(
+      GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 12,
+        deltaY: 2,
+        scrollbar: middle
+      )
+    )
+  }
 }

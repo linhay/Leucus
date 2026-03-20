@@ -1,6 +1,12 @@
 import CoreGraphics
 import Foundation
 
+public enum CanvasScrollPanMapping {
+  public static func panDelta(scrollDeltaX: CGFloat, scrollDeltaY: CGFloat) -> CGSize {
+    CGSize(width: scrollDeltaX, height: -scrollDeltaY)
+  }
+}
+
 public enum CanvasNodeKind: String, Sendable, Equatable, Codable {
   case placeholder
   case terminal
