@@ -1,4 +1,5 @@
 import CoreGraphics
+import Foundation
 import Testing
 @testable import InfiniteCanvasKit
 
@@ -95,5 +96,136 @@ struct InfiniteCanvasKitTests {
     node.resize(using: .bottomRight, delta: CGSize(width: 40, height: -20))
     #expect(node.size == CGSize(width: 240, height: 180))
     #expect(node.position == CGPoint(x: 0, y: -20))
+  }
+
+  @Test
+  func terminalFactoryShouldCreateTerminalKindNode() {
+    let node = CanvasNodeCard.terminal(
+      at: CGPoint(x: 12, y: 34),
+      workingDirectory: "/Users/linhey/Workspace/demo",
+      title: "demo"
+    )
+    #expect(node.kind == .terminal)
+    #expect(node.group == .folder)
+    #expect(node.groupLabel == "Workspace")
+    #expect(node.title == "demo")
+    #expect(node.workingDirectory == "/Users/linhey/Workspace/demo")
+    #expect(node.position == CGPoint(x: 12, y: 34))
+  }
+
+  @Test
+  func arrowNavigationShouldPickNearestNodeInDirection() {
+    let center = CanvasNodeCard(title: "Center", position: CGPoint(x: 0, y: 0), size: CGSize(width: 100, height: 100))
+    let left = CanvasNodeCard(title: "Left", position: CGPoint(x: -300, y: 0), size: CGSize(width: 100, height: 100))
+    let right = CanvasNodeCard(title: "Right", position: CGPoint(x: 300, y: 0), size: CGSize(width: 100, height: 100))
+    let up = CanvasNodeCard(title: "Up", position: CGPoint(x: 0, y: 300), size: CGSize(width: 100, height: 100))
+    let down = CanvasNodeCard(title: "Down", position: CGPoint(x: 0, y: -300), size: CGSize(width: 100, height: 100))
+    let nodes = [center, left, right, up, down]
+
+    #expect(nextNodeID(from: center.id, direction: .left, in: nodes) == left.id)
+    #expect(nextNodeID(from: center.id, direction: .right, in: nodes) == right.id)
+    #expect(nextNodeID(from: center.id, direction: .up, in: nodes) == up.id)
+    #expect(nextNodeID(from: center.id, direction: .down, in: nodes) == down.id)
+  }
+
+  @Test
+  func finderPathShouldOnlyBeAvailableForTerminalNode() {
+    let terminal = CanvasNodeCard.terminal(
+      at: CGPoint(x: 0, y: 0),
+      workingDirectory: "/Users/linhey/Workspace/demo"
+    )
+    let placeholder = CanvasNodeCard(
+      kind: .placeholder,
+      title: "placeholder",
+      position: .zero
+    )
+
+    #expect(finderOpenPath(for: terminal) == "/Users/linhey/Workspace/demo")
+    #expect(finderOpenPath(for: placeholder) == nil)
+  }
+
+  @Test
+  func nodeShouldReportMinimumSizeState() {
+    var node = CanvasNodeCard(
+      title: "Node",
+      position: .zero,
+      size: CGSize(width: 300, height: 220)
+    )
+    #expect(!node.isAtMinimumSize)
+
+    node.resizeBy(delta: CGSize(width: -500, height: -500))
+    #expect(node.size == CanvasNodeCard.minimumSize)
+    #expect(node.isAtMinimumSize)
+  }
+
+  @Test
+  func snapshotStoreShouldRoundtripCanvasState() {
+    let node = CanvasNodeCard.terminal(
+      at: CGPoint(x: 20, y: 40),
+      workingDirectory: "/Users/linhey/Workspace/demo",
+      title: "demo"
+    )
+    let viewport = InfiniteCanvasViewport(
+      scale: 1.3,
+      offset: CGPoint(x: 12, y: -8),
+      minScale: 0.4,
+      maxScale: 2.4
+    )
+    let snapshot = CanvasStateSnapshot(
+      nodes: [node],
+      selectedNodeIDs: [node.id],
+      viewport: viewport
+    )
+
+    let url = FileManager.default.temporaryDirectory
+      .appendingPathComponent("canvas-snapshot-\(UUID().uuidString)")
+      .appendingPathExtension("json")
+    defer { try? FileManager.default.removeItem(at: url) }
+
+    #expect(CanvasSnapshotStore.save(snapshot, to: url))
+    guard let loaded = CanvasSnapshotStore.load(from: url) else {
+      Issue.record("snapshot should load from saved file")
+      return
+    }
+    #expect(loaded == snapshot)
+    #expect(loaded.materializeNodes().first?.workingDirectory == "/Users/linhey/Workspace/demo")
+  }
+
+  @Test
+  func resizeHitTestShouldPreferCornerBeforeEdge() {
+    let rect = CGRect(x: 100, y: 100, width: 320, height: 220)
+    let cornerPoint = CGPoint(x: rect.maxX, y: rect.maxY)
+    let handle = CanvasNodeResizeGeometry.hitHandle(
+      at: cornerPoint,
+      in: rect,
+      handleVisualSize: 10,
+      edgeHitWidth: 12
+    )
+    #expect(handle == .topRight)
+  }
+
+  @Test
+  func resizeHitTestShouldHitEdgeAwayFromCorner() {
+    let rect = CGRect(x: 20, y: 20, width: 300, height: 200)
+    let pointNearTopEdge = CGPoint(x: rect.midX, y: rect.maxY + 2)
+    let handle = CanvasNodeResizeGeometry.hitHandle(
+      at: pointNearTopEdge,
+      in: rect,
+      handleVisualSize: 10,
+      edgeHitWidth: 12
+    )
+    #expect(handle == .top)
+  }
+
+  @Test
+  func resizeHighlightRectsShouldMapToExpectedEdges() {
+    let rect = CGRect(x: 10, y: 10, width: 200, height: 120)
+    let topRects = CanvasNodeResizeGeometry.highlightRects(for: .top, in: rect, thickness: 3)
+    #expect(topRects.count == 1)
+    #expect(topRects[0].minY == rect.maxY - 3)
+    #expect(topRects[0].height == 3)
+
+    let cornerRects = CanvasNodeResizeGeometry.highlightRects(for: .bottomLeft, in: rect, thickness: 3)
+    #expect(cornerRects.count == 2)
   }
 }

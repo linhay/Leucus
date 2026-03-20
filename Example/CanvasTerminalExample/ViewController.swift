@@ -5,6 +5,7 @@ import InfiniteCanvasKit
 @MainActor
 final class ViewController: NSViewController {
     private lazy var canvasView = InfiniteCanvasView()
+    private var terminateObserver: NSObjectProtocol?
 
     override func loadView() {
         view = NSView()
@@ -14,6 +15,7 @@ final class ViewController: NSViewController {
         super.viewDidLoad()
         configureView()
         configureCanvasView()
+        observeApplicationTermination()
     }
 
     override func viewDidAppear() {
@@ -28,11 +30,17 @@ final class ViewController: NSViewController {
 
     private func configureCanvasView() {
         canvasView.translatesAutoresizingMaskIntoConstraints = false
-        canvasView.nodes = [
-            CanvasNodeCard(title: "Node A", position: CGPoint(x: -220, y: -120)),
-            CanvasNodeCard(title: "Node B", position: CGPoint(x: 140, y: -30)),
-            CanvasNodeCard(title: "Node C", position: CGPoint(x: -10, y: 180)),
-        ]
+        let restored = canvasView.configurePersistence(
+            key: "canvas-terminal-example-main",
+            restoreOnConfigure: true
+        )
+        if !restored {
+            canvasView.nodes = [
+                CanvasNodeCard(title: "Node A", position: CGPoint(x: -220, y: -120)),
+                CanvasNodeCard(title: "Node B", position: CGPoint(x: 140, y: -30)),
+                CanvasNodeCard(title: "Node C", position: CGPoint(x: -10, y: 180)),
+            ]
+        }
         view.addSubview(canvasView)
 
         NSLayoutConstraint.activate([
@@ -46,5 +54,21 @@ final class ViewController: NSViewController {
     private func activateCanvas() {
         view.window?.title = "Infinite Canvas Example"
         view.window?.makeFirstResponder(canvasView)
+    }
+
+    private func observeApplicationTermination() {
+        terminateObserver = NotificationCenter.default.addObserver(
+            forName: NSApplication.willTerminateNotification,
+            object: nil,
+            queue: .main
+        ) { [weak self] _ in
+            self?.canvasView.persistNow()
+        }
+    }
+
+    deinit {
+        if let terminateObserver {
+            NotificationCenter.default.removeObserver(terminateObserver)
+        }
     }
 }

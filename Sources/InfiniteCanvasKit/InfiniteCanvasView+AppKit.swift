@@ -4,15 +4,24 @@ import AppKit
 @MainActor
 public final class InfiniteCanvasView: NSView {
   public var viewport = InfiniteCanvasViewport() {
-    didSet { needsDisplay = true }
+    didSet {
+      needsDisplay = true
+      scheduleAutosave()
+    }
   }
 
   public var nodes: [CanvasNodeCard] = [] {
-    didSet { needsDisplay = true }
+    didSet {
+      needsDisplay = true
+      scheduleAutosave()
+    }
   }
 
   public var selectedNodeIDs: Set<UUID> = [] {
-    didSet { needsDisplay = true }
+    didSet {
+      needsDisplay = true
+      scheduleAutosave()
+    }
   }
 
   public var backgroundColor = NSColor(calibratedWhite: 0.09, alpha: 1) {
@@ -32,16 +41,31 @@ public final class InfiniteCanvasView: NSView {
   }
 
   private var interaction: Interaction = .idle
+  private var contextMenuPointInView: CGPoint?
+  private var contextMenuNodeID: UUID?
+  private var autosaveKey: String?
+  private var autosaveWorkItem: DispatchWorkItem?
+  private var isRestoringState = false
+  private var trackingArea: NSTrackingArea?
+  private var hoveredResizeTarget: HoveredResizeTarget?
 
   private let headerHeight: CGFloat = 32
   private let closeButtonSize: CGFloat = 16
   private let resizeHandleSize: CGFloat = 10
+  private let resizeEdgeHitWidth: CGFloat = 12
+  private let resizeHoverStrokeWidth: CGFloat = 2.5
+
+  private struct HoveredResizeTarget: Equatable {
+    let id: UUID
+    let handle: CanvasNodeResizeHandle
+  }
 
   public override var acceptsFirstResponder: Bool { true }
 
   public override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
     wantsLayer = true
+    registerForDraggedTypes([.fileURL])
   }
 
   @available(*, unavailable)
@@ -49,28 +73,58 @@ public final class InfiniteCanvasView: NSView {
     nil
   }
 
+  @discardableResult
+  public func configurePersistence(key: String, restoreOnConfigure: Bool = true) -> Bool {
+    autosaveKey = key
+    guard restoreOnConfigure, let snapshot = CanvasSnapshotStore.load(key: key) else {
+      return false
+    }
+    restore(from: snapshot)
+    return true
+  }
+
+  public func restore(from snapshot: CanvasStateSnapshot) {
+    isRestoringState = true
+    viewport = snapshot.materializeViewport()
+    nodes = snapshot.materializeNodes()
+    selectedNodeIDs = Set(snapshot.selectedNodeIDs)
+    isRestoringState = false
+  }
+
+  public func persistNow() {
+    autosaveWorkItem?.cancel()
+    autosaveWorkItem = nil
+    guard !isRestoringState, let key = autosaveKey else { return }
+    _ = CanvasSnapshotStore.save(makeSnapshot(), key: key)
+  }
+
   public override func mouseDown(with event: NSEvent) {
     window?.makeFirstResponder(self)
     let point = convert(event.locationInWindow, from: nil)
 
     if event.modifierFlags.contains(.option) {
+      hoveredResizeTarget = nil
       interaction = .panning(lastPointInView: point)
       return
     }
 
     guard let hit = hitTestNode(at: point) else {
       selectedNodeIDs.removeAll()
+      hoveredResizeTarget = nil
       interaction = .marquee(startInView: point, currentInView: point)
       return
     }
 
-    if let closeRect = closeButtonRect(for: hit.rectInView), closeRect.contains(point) {
+    let compact = isCompact(node: hit.node)
+
+    if !compact, let closeRect = closeButtonRect(for: hit.rectInView), closeRect.contains(point) {
       removeNode(id: hit.node.id)
       interaction = .idle
       return
     }
 
     if let resize = resizeHandle(at: point, in: hit.rectInView) {
+      hoveredResizeTarget = HoveredResizeTarget(id: hit.node.id, handle: resize)
       interaction = .resizing(
         id: hit.node.id,
         handle: resize,
@@ -81,7 +135,7 @@ public final class InfiniteCanvasView: NSView {
       return
     }
 
-    if headerRect(for: hit.rectInView).contains(point) {
+    if compact || headerRect(for: hit.rectInView).contains(point) {
       if !selectedNodeIDs.contains(hit.node.id) {
         selectedNodeIDs = [hit.node.id]
       }
@@ -139,6 +193,12 @@ public final class InfiniteCanvasView: NSView {
     case .idle:
       break
     }
+
+    if case .idle = interaction {
+      updateHoveredResizeTarget(at: point)
+    } else {
+      hoveredResizeTarget = nil
+    }
   }
 
   public override func mouseUp(with _: NSEvent) {
@@ -147,7 +207,125 @@ public final class InfiniteCanvasView: NSView {
       selectedNodeIDs = InfiniteCanvasKit.selectedNodeIDs(in: worldRect, from: nodes)
     }
     interaction = .idle
+    if let event = NSApp.currentEvent {
+      let point = convert(event.locationInWindow, from: nil)
+      updateHoveredResizeTarget(at: point)
+    }
     needsDisplay = true
+  }
+
+  public override func mouseMoved(with event: NSEvent) {
+    guard case .idle = interaction else { return }
+    let point = convert(event.locationInWindow, from: nil)
+    updateHoveredResizeTarget(at: point)
+  }
+
+  public override func mouseExited(with _: NSEvent) {
+    guard hoveredResizeTarget != nil else { return }
+    hoveredResizeTarget = nil
+    needsDisplay = true
+  }
+
+  public override func updateTrackingAreas() {
+    super.updateTrackingAreas()
+    if let trackingArea {
+      removeTrackingArea(trackingArea)
+    }
+    let area = NSTrackingArea(
+      rect: .zero,
+      options: [.activeInKeyWindow, .inVisibleRect, .mouseMoved, .mouseEnteredAndExited],
+      owner: self,
+      userInfo: nil
+    )
+    addTrackingArea(area)
+    trackingArea = area
+  }
+
+  public override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    window?.acceptsMouseMovedEvents = true
+  }
+
+  public override func keyDown(with event: NSEvent) {
+    guard let direction = navigationDirection(from: event) else {
+      super.keyDown(with: event)
+      return
+    }
+    navigateSelection(to: direction)
+  }
+
+  public override func menu(for event: NSEvent) -> NSMenu? {
+    let point = convert(event.locationInWindow, from: nil)
+    contextMenuPointInView = point
+
+    if let hit = hitTestNode(at: point) {
+      contextMenuNodeID = hit.node.id
+      selectedNodeIDs = [hit.node.id]
+
+      let menu = NSMenu(title: "Node")
+      let closeItem = NSMenuItem(
+        title: "关闭当前卡片",
+        action: #selector(closeContextCard(_:)),
+        keyEquivalent: ""
+      )
+      closeItem.target = self
+      menu.addItem(closeItem)
+
+      let openFinder = NSMenuItem(
+        title: "在 Finder 中打开",
+        action: #selector(openContextCardInFinder(_:)),
+        keyEquivalent: ""
+      )
+      openFinder.target = self
+      openFinder.isEnabled = finderPath(forNodeID: hit.node.id) != nil
+      menu.addItem(openFinder)
+      return menu
+    }
+
+    contextMenuNodeID = nil
+    let menu = NSMenu(title: "Canvas")
+    let addTerminal = NSMenuItem(
+      title: "添加终端卡片",
+      action: #selector(addTerminalCardFromContextMenu(_:)),
+      keyEquivalent: ""
+    )
+    addTerminal.target = self
+    addTerminal.representedObject = NSValue(point: point)
+    menu.addItem(addTerminal)
+    return menu
+  }
+
+  public override func draggingEntered(_ sender: NSDraggingInfo) -> NSDragOperation {
+    droppedDirectoryURLs(from: sender.draggingPasteboard).isEmpty ? [] : .copy
+  }
+
+  public override func prepareForDragOperation(_ sender: NSDraggingInfo) -> Bool {
+    !droppedDirectoryURLs(from: sender.draggingPasteboard).isEmpty
+  }
+
+  public override func performDragOperation(_ sender: NSDraggingInfo) -> Bool {
+    let directories = droppedDirectoryURLs(from: sender.draggingPasteboard)
+    guard !directories.isEmpty else { return false }
+
+    let anchorInView = convert(sender.draggingLocation, from: nil)
+    let anchorWorld = viewport.viewToWorld(anchorInView, viewportSize: bounds.size)
+
+    var lastID: UUID?
+    for (index, url) in directories.enumerated() {
+      let offset = CGFloat(index) * 24
+      let title = url.lastPathComponent.isEmpty ? "Terminal" : url.lastPathComponent
+      let node = CanvasNodeCard.terminal(
+        at: CGPoint(x: anchorWorld.x + offset, y: anchorWorld.y - offset),
+        workingDirectory: url.path,
+        title: title
+      )
+      nodes.append(node)
+      lastID = node.id
+    }
+    if let lastID {
+      selectedNodeIDs = [lastID]
+    }
+    return true
   }
 
   public override func scrollWheel(with event: NSEvent) {
@@ -207,10 +385,14 @@ public final class InfiniteCanvasView: NSView {
       let rect = viewRect(for: node)
       let selected = selectedNodeIDs.contains(node.id)
       drawCardBackground(rect: rect, selected: selected)
-      drawCardHeader(node: node, rect: rect)
-      drawCardBodyHint(rect: rect)
-      if selected {
-        drawResizeHandles(in: rect)
+      if isCompact(node: node) {
+        drawCompactCard(node: node, rect: rect)
+      } else {
+        drawCardHeader(node: node, rect: rect)
+        drawCardBodyHint(node: node, rect: rect)
+      }
+      if let hoveredResizeTarget, hoveredResizeTarget.id == node.id {
+        drawHoveredResizeBorder(in: rect, handle: hoveredResizeTarget.handle)
       }
     }
   }
@@ -256,22 +438,90 @@ public final class InfiniteCanvasView: NSView {
     }
   }
 
-  private func drawCardBodyHint(rect: CGRect) {
+  private func drawCardBodyHint(node: CanvasNodeCard, rect: CGRect) {
     let subtitleAttributes: [NSAttributedString.Key: Any] = [
       .font: NSFont.systemFont(ofSize: 12, weight: .regular),
       .foregroundColor: NSColor(calibratedWhite: 1, alpha: 0.52),
     ]
-    ("空节点（类型待定）" as NSString).draw(
+    (subtitle(for: node) as NSString).draw(
       at: CGPoint(x: rect.minX + 12, y: rect.minY + 12),
       withAttributes: subtitleAttributes
     )
   }
 
-  private func drawResizeHandles(in rect: CGRect) {
-    for (_, handleRect) in resizeHandleRects(for: rect) {
-      let path = NSBezierPath(roundedRect: handleRect, xRadius: 2, yRadius: 2)
-      NSColor(calibratedWhite: 1, alpha: 0.9).setFill()
-      path.fill()
+  private func drawCompactCard(node: CanvasNodeCard, rect: CGRect) {
+    let iconAttributes: [NSAttributedString.Key: Any] = [
+      .font: NSFont.systemFont(ofSize: 15, weight: .semibold),
+      .foregroundColor: NSColor(calibratedWhite: 1, alpha: 0.92),
+    ]
+    let titleAttributes: [NSAttributedString.Key: Any] = [
+      .font: NSFont.systemFont(ofSize: 13, weight: .semibold),
+      .foregroundColor: NSColor(calibratedWhite: 1, alpha: 0.9),
+    ]
+    let summaryParagraph = NSMutableParagraphStyle()
+    summaryParagraph.lineBreakMode = .byTruncatingMiddle
+    let summaryAttributes: [NSAttributedString.Key: Any] = [
+      .font: NSFont.systemFont(ofSize: 12, weight: .regular),
+      .foregroundColor: NSColor(calibratedWhite: 1, alpha: 0.58),
+      .paragraphStyle: summaryParagraph,
+    ]
+
+    (iconText(for: node.kind) as NSString).draw(
+      at: CGPoint(x: rect.minX + 12, y: rect.maxY - 30),
+      withAttributes: iconAttributes
+    )
+
+    (node.title as NSString).draw(
+      at: CGPoint(x: rect.minX + 34, y: rect.maxY - 30),
+      withAttributes: titleAttributes
+    )
+
+    let summaryRect = CGRect(
+      x: rect.minX + 12,
+      y: rect.minY + 12,
+      width: rect.width - 24,
+      height: 18
+    )
+    (subtitle(for: node) as NSString).draw(in: summaryRect, withAttributes: summaryAttributes)
+  }
+
+  @objc
+  private func addTerminalCardFromContextMenu(_ sender: NSMenuItem) {
+    let pointInView = (sender.representedObject as? NSValue)?.pointValue ?? contextMenuPointInView ?? .zero
+    appendTerminalCard(
+      at: viewport.viewToWorld(pointInView, viewportSize: bounds.size),
+      workingDirectory: nil,
+      title: "Terminal"
+    )
+  }
+
+  @objc
+  private func closeContextCard(_: NSMenuItem) {
+    guard let id = contextMenuNodeID else { return }
+    removeNode(id: id)
+    contextMenuNodeID = nil
+  }
+
+  @objc
+  private func openContextCardInFinder(_: NSMenuItem) {
+    guard
+      let id = contextMenuNodeID,
+      let path = finderPath(forNodeID: id)
+    else {
+      return
+    }
+    NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+  }
+
+  private func drawHoveredResizeBorder(in rect: CGRect, handle: CanvasNodeResizeHandle) {
+    let highlightRects = CanvasNodeResizeGeometry.highlightRects(
+      for: handle,
+      in: rect,
+      thickness: resizeHoverStrokeWidth
+    )
+    NSColor(calibratedRed: 0.39, green: 0.76, blue: 1.0, alpha: 0.95).setFill()
+    for highlight in highlightRects {
+      NSBezierPath(rect: highlight).fill()
     }
   }
 
@@ -307,27 +557,34 @@ public final class InfiniteCanvasView: NSView {
   }
 
   private func resizeHandle(at point: CGPoint, in rect: CGRect) -> CanvasNodeResizeHandle? {
-    for (handle, handleRect) in resizeHandleRects(for: rect) {
-      if handleRect.contains(point) {
-        return handle
-      }
-    }
-    return nil
+    CanvasNodeResizeGeometry.hitHandle(
+      at: point,
+      in: rect,
+      handleVisualSize: resizeHandleSize,
+      edgeHitWidth: resizeEdgeHitWidth
+    )
   }
 
-  private func resizeHandleRects(for rect: CGRect) -> [(CanvasNodeResizeHandle, CGRect)] {
-    let s = resizeHandleSize
-    let hs = s * 0.5
-    return [
-      (.topLeft, CGRect(x: rect.minX - hs, y: rect.maxY - hs, width: s, height: s)),
-      (.top, CGRect(x: rect.midX - hs, y: rect.maxY - hs, width: s, height: s)),
-      (.topRight, CGRect(x: rect.maxX - hs, y: rect.maxY - hs, width: s, height: s)),
-      (.right, CGRect(x: rect.maxX - hs, y: rect.midY - hs, width: s, height: s)),
-      (.bottomRight, CGRect(x: rect.maxX - hs, y: rect.minY - hs, width: s, height: s)),
-      (.bottom, CGRect(x: rect.midX - hs, y: rect.minY - hs, width: s, height: s)),
-      (.bottomLeft, CGRect(x: rect.minX - hs, y: rect.minY - hs, width: s, height: s)),
-      (.left, CGRect(x: rect.minX - hs, y: rect.midY - hs, width: s, height: s)),
-    ]
+  private func updateHoveredResizeTarget(at point: CGPoint) {
+    guard let hit = hitTestNode(at: point), !isCompact(node: hit.node) else {
+      if hoveredResizeTarget != nil {
+        hoveredResizeTarget = nil
+        needsDisplay = true
+      }
+      return
+    }
+    guard let handle = resizeHandle(at: point, in: hit.rectInView) else {
+      if hoveredResizeTarget != nil {
+        hoveredResizeTarget = nil
+        needsDisplay = true
+      }
+      return
+    }
+
+    let next = HoveredResizeTarget(id: hit.node.id, handle: handle)
+    guard hoveredResizeTarget != next else { return }
+    hoveredResizeTarget = next
+    needsDisplay = true
   }
 
   private func headerRect(for rect: CGRect) -> CGRect {
@@ -364,6 +621,92 @@ public final class InfiniteCanvasView: NSView {
       width: node.size.width * viewport.scale,
       height: node.size.height * viewport.scale
     )
+  }
+
+  private func subtitle(for node: CanvasNodeCard) -> String {
+    switch node.kind {
+    case .terminal:
+      let groupText = "文件夹大类: \(node.groupLabel ?? "未指定")"
+      if let workingDirectory = node.workingDirectory, !workingDirectory.isEmpty {
+        return "\(groupText) · \(workingDirectory)"
+      }
+      return groupText
+    case .placeholder:
+      return "空节点（类型待定）"
+    }
+  }
+
+  private func iconText(for kind: CanvasNodeKind) -> String {
+    switch kind {
+    case .terminal:
+      return "⌨"
+    case .placeholder:
+      return "□"
+    }
+  }
+
+  private func isCompact(node: CanvasNodeCard) -> Bool {
+    node.isAtMinimumSize
+  }
+
+  private func appendTerminalCard(at worldPoint: CGPoint, workingDirectory: String?, title: String) {
+    let node = CanvasNodeCard.terminal(
+      at: worldPoint,
+      workingDirectory: workingDirectory,
+      title: title
+    )
+    nodes.append(node)
+    selectedNodeIDs = [node.id]
+  }
+
+  private func finderPath(forNodeID id: UUID) -> String? {
+    guard let node = nodes.first(where: { $0.id == id }) else { return nil }
+    return InfiniteCanvasKit.finderOpenPath(for: node)
+  }
+
+  private func makeSnapshot() -> CanvasStateSnapshot {
+    CanvasStateSnapshot(nodes: nodes, selectedNodeIDs: selectedNodeIDs, viewport: viewport)
+  }
+
+  private func scheduleAutosave() {
+    guard !isRestoringState, autosaveKey != nil else { return }
+    autosaveWorkItem?.cancel()
+    let work = DispatchWorkItem { [weak self] in
+      self?.persistNow()
+    }
+    autosaveWorkItem = work
+    DispatchQueue.main.asyncAfter(deadline: .now() + 0.35, execute: work)
+  }
+
+  private func navigationDirection(from event: NSEvent) -> CanvasNavigationDirection? {
+    switch event.keyCode {
+    case 123: return .left
+    case 124: return .right
+    case 125: return .down
+    case 126: return .up
+    default: return nil
+    }
+  }
+
+  private func navigateSelection(to direction: CanvasNavigationDirection) {
+    let currentID = selectedNodeIDs.first
+    guard let nextID = nextNodeID(from: currentID, direction: direction, in: nodes) else { return }
+    selectedNodeIDs = [nextID]
+  }
+
+  private func droppedDirectoryURLs(from pasteboard: NSPasteboard) -> [URL] {
+    let options: [NSPasteboard.ReadingOptionKey: Any] = [
+      .urlReadingFileURLsOnly: true,
+    ]
+    guard let urls = pasteboard.readObjects(forClasses: [NSURL.self], options: options) as? [URL] else {
+      return []
+    }
+
+    return urls.filter { url in
+      var isDirectory: ObjCBool = false
+      guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDirectory) else { return false }
+      return isDirectory.boolValue
+    }
   }
 
   private func normalizedPhase(_ value: CGFloat, spacing: CGFloat) -> CGFloat {
