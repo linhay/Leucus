@@ -296,7 +296,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				LEUCUS_APPCAST_URL = "https://$(LEUCUS_GITHUB_OWNER).github.io/$(LEUCUS_GITHUB_REPO)/appcast.xml";
 				LEUCUS_GITHUB_OWNER = linhay;
 				LEUCUS_GITHUB_REPO = Leucus;
@@ -331,7 +331,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
-				MARKETING_VERSION = 1.0;
+				MARKETING_VERSION = 0.0.1;
 				LEUCUS_APPCAST_URL = "https://$(LEUCUS_GITHUB_OWNER).github.io/$(LEUCUS_GITHUB_REPO)/appcast.xml";
 				LEUCUS_GITHUB_OWNER = linhay;
 				LEUCUS_GITHUB_REPO = Leucus;

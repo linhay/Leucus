@@ -1,5 +1,11 @@
 # Release Notes - 2026-03
 
+## 2026-03-21
+
+- 发布：`Leucus` 首个版本 `0.0.1`（Git tag: `v0.0.1`）。
+- 构建：`xcodebuild -project Example/Leucus.xcodeproj -scheme Leucus -configuration Release -destination 'platform=macOS' build` 成功。
+- 产物：生成 `Leucus-0.0.1.zip` 与 `appcast.xml` 并上传到 GitHub Release，供 Sparkle/GitHub Pages 同步分发。
+
 ## 2026-03-20
 
 - 修复：`Leucus` 的 `AppIcon` 全尺寸资源补齐为 macOS 标准槽位（`16/32/128/256/512` 的 `1x/2x`）。
