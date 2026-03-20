@@ -34,7 +34,7 @@ final class ViewController: NSViewController {
         let canvasView = workspaceView.canvasView
         workspaceView.translatesAutoresizingMaskIntoConstraints = false
         let restored = canvasView.configurePersistence(
-            key: "canvas-terminal-example-main",
+            key: "leucus-main",
             restoreOnConfigure: true
         )
         if !restored {
@@ -63,7 +63,7 @@ final class ViewController: NSViewController {
     }
 
     private func activateCanvas() {
-        view.window?.title = "Infinite Canvas Example"
+        view.window?.title = "Leucus"
         guard #available(macOS 14.0, *), let workspaceView else { return }
         view.window?.makeFirstResponder(workspaceView.canvasView)
     }

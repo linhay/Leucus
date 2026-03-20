@@ -1,0 +1,57 @@
+<svg width="512" height="512" viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <!-- 
+    Leucus Logo Design
+    Style: Geometric, Minimalist, Premium
+    Concept: A faceted asteroid (Leucus) with its orbital trajectory.
+  -->
+  
+  <defs>
+    <style>
+      .primary { fill: #3B82F6; } /* Premium Blue */
+      .accent { fill: #94A3B8; }  /* Slate Gray */
+      .text-color { fill: currentColor; }
+    </style>
+  </defs>
+
+  <!-- Symbol Group -->
+  <g id="Symbol" transform="translate(156, 100)">
+    <!-- Orbit Arc -->
+    <path d="M-40 100 A 140 140 0 0 1 240 100" fill="none" stroke="#3B82F6" stroke-width="4" stroke-dasharray="8 12" opacity="0.6" />
+    
+    <!-- Asteroid Core (Faceted Hexagon) -->
+    <g id="Asteroid" transform="translate(100, 100)">
+      <!-- Main body -->
+      <path d="M0 -80 L70 -40 L70 40 L0 80 L-70 40 L-70 -40 Z" class="text-color" />
+      
+      <!-- Facets (Highlights/Shadows) -->
+      <path d="M0 -80 L70 -40 L0 0 Z" fill="#3B82F6" opacity="0.8" />
+      <path d="M70 -40 L70 40 L0 0 Z" fill="#2563EB" opacity="0.6" />
+      <path d="M0 80 L-70 40 L0 0 Z" fill="#1D4ED8" opacity="0.4" />
+      
+      <!-- Central Vertex -->
+      <circle cx="0" cy="0" r="2" fill="white" opacity="0.5" />
+    </g>
+    
+    <!-- Orbital Highlight (Trojan Point) -->
+    <circle cx="240" cy="100" r="6" class="primary" />
+  </g>
+
+  <!-- Wordmark Group (Hand-crafted geometric paths for "LEUCUS") -->
+  <g id="Wordmark" transform="translate(106, 380)" class="text-color">
+    <!-- L -->
+    <path d="M0 0 V40 H25" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- E -->
+    <path d="M45 0 V40 H70 M45 20 H65 M45 0 H70" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- U -->
+    <path d="M90 0 V25 A15 15 0 0 0 120 25 V0" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- C -->
+    <path d="M170 8 A18 18 0 1 0 170 32" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- U -->
+    <path d="M190 0 V25 A15 15 0 0 0 220 25 V0" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+    <!-- S -->
+    <path d="M245 35 Q260 45 275 35 Q285 25 260 20 Q235 15 245 5 Q260 -5 275 5" fill="none" stroke="currentColor" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" />
+  </g>
+
+  <!-- Subtitle (Optional/Subtle) -->
+  <rect x="236" y="440" width="40" height="2" class="primary" rx="1" />
+</svg>

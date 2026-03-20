@@ -43,7 +43,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             backing: .buffered,
             defer: false
         )
-        window.title = "CanvasTerminal Example"
+        window.title = "Leucus"
         window.contentViewController = ViewController()
         window.contentMinSize = minimumContentSize
         window.center()

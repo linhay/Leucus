@@ -11,13 +11,13 @@
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
-		509321CD2F645FC30004661A /* CanvasTerminalExample.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = CanvasTerminalExample.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		509321CD2F645FC30004661A /* Leucus.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Leucus.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
-		509321CF2F645FC30004661A /* CanvasTerminalExample */ = {
+		509321CF2F645FC30004661A /* Leucus */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
-			path = CanvasTerminalExample;
+			path = Leucus;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -44,7 +44,7 @@
 		509321C42F645FC30004661A = {
 			isa = PBXGroup;
 			children = (
-				509321CF2F645FC30004661A /* CanvasTerminalExample */,
+				509321CF2F645FC30004661A /* Leucus */,
 				509321CE2F645FC30004661A /* Products */,
 				503AA0B12F685D3300D5C113 /* Frameworks */,
 			);
@@ -53,7 +53,7 @@
 		509321CE2F645FC30004661A /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				509321CD2F645FC30004661A /* CanvasTerminalExample.app */,
+				509321CD2F645FC30004661A /* Leucus.app */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -61,9 +61,9 @@
 /* End PBXGroup section */
 
 /* Begin PBXNativeTarget section */
-		509321CC2F645FC30004661A /* CanvasTerminalExample */ = {
+		509321CC2F645FC30004661A /* Leucus */ = {
 			isa = PBXNativeTarget;
-			buildConfigurationList = 509321DB2F645FC40004661A /* Build configuration list for PBXNativeTarget "CanvasTerminalExample" */;
+			buildConfigurationList = 509321DB2F645FC40004661A /* Build configuration list for PBXNativeTarget "Leucus" */;
 			buildPhases = (
 				509321C92F645FC30004661A /* Sources */,
 				509321CA2F645FC30004661A /* Frameworks */,
@@ -74,14 +74,14 @@
 			dependencies = (
 			);
 			fileSystemSynchronizedGroups = (
-				509321CF2F645FC30004661A /* CanvasTerminalExample */,
+				509321CF2F645FC30004661A /* Leucus */,
 			);
-			name = CanvasTerminalExample;
+			name = Leucus;
 			packageProductDependencies = (
 				509321DF2F646FC40004661A /* CanvasKit */,
 			);
-			productName = CanvasTerminalExample;
-			productReference = 509321CD2F645FC30004661A /* CanvasTerminalExample.app */;
+			productName = Leucus;
+			productReference = 509321CD2F645FC30004661A /* Leucus.app */;
 			productType = "com.apple.product-type.application";
 		};
 /* End PBXNativeTarget section */
@@ -99,7 +99,7 @@
 					};
 				};
 			};
-			buildConfigurationList = 509321C82F645FC30004661A /* Build configuration list for PBXProject "CanvasTerminalExample" */;
+			buildConfigurationList = 509321C82F645FC30004661A /* Build configuration list for PBXProject "Leucus" */;
 			developmentRegion = en;
 			hasScannedForEncodings = 0;
 			knownRegions = (
@@ -115,7 +115,7 @@
 			projectDirPath = "";
 			projectRoot = "";
 			targets = (
-				509321CC2F645FC30004661A /* CanvasTerminalExample */,
+				509321CC2F645FC30004661A /* Leucus */,
 			);
 		};
 /* End PBXProject section */
@@ -265,7 +265,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = CanvasTerminalExample/Entitlement.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Leucus/Entitlement.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -274,13 +274,14 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Leucus;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.linhay.CanvasTerminalExample;
+				PRODUCT_BUNDLE_IDENTIFIER = com.linhay.Leucus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -296,7 +297,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_ENTITLEMENTS = CanvasTerminalExample/Entitlement.entitlements;
+				CODE_SIGN_ENTITLEMENTS = Leucus/Entitlement.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
@@ -305,13 +306,14 @@
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_USER_SELECTED_FILES = readonly;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_CFBundleDisplayName = Leucus;
 				INFOPLIST_KEY_NSHumanReadableCopyright = "";
 				LD_RUNPATH_SEARCH_PATHS = (
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
 				MARKETING_VERSION = 1.0;
-				PRODUCT_BUNDLE_IDENTIFIER = com.linhay.CanvasTerminalExample;
+				PRODUCT_BUNDLE_IDENTIFIER = com.linhay.Leucus;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				REGISTER_APP_GROUPS = YES;
 				STRING_CATALOG_GENERATE_SYMBOLS = YES;
@@ -326,7 +328,7 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
-		509321C82F645FC30004661A /* Build configuration list for PBXProject "CanvasTerminalExample" */ = {
+		509321C82F645FC30004661A /* Build configuration list for PBXProject "Leucus" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				509321D92F645FC40004661A /* Debug */,
@@ -335,7 +337,7 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;
 		};
-		509321DB2F645FC40004661A /* Build configuration list for PBXNativeTarget "CanvasTerminalExample" */ = {
+		509321DB2F645FC40004661A /* Build configuration list for PBXNativeTarget "Leucus" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				509321DC2F645FC40004661A /* Debug */,

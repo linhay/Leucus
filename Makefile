@@ -17,4 +17,4 @@ test:
 	@swift test
 
 open-example:
-	@open Example/CanvasTerminalExample.xcodeproj
+	@open Example/Leucus.xcodeproj

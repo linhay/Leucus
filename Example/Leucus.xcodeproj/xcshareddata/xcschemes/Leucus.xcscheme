@@ -16,9 +16,9 @@
             <BuildableReference
                BuildableIdentifier = "primary"
                BlueprintIdentifier = "509321CC2F645FC30004661A"
-               BuildableName = "GhosttyTerminalApp.app"
-               BlueprintName = "GhosttyTerminalApp"
-               ReferencedContainer = "container:GhosttyTerminalApp.xcodeproj">
+               BuildableName = "Leucus.app"
+               BlueprintName = "Leucus"
+               ReferencedContainer = "container:Leucus.xcodeproj">
             </BuildableReference>
          </BuildActionEntry>
       </BuildActionEntries>
@@ -45,9 +45,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "509321CC2F645FC30004661A"
-            BuildableName = "GhosttyTerminalApp.app"
-            BlueprintName = "GhosttyTerminalApp"
-            ReferencedContainer = "container:GhosttyTerminalApp.xcodeproj">
+            BuildableName = "Leucus.app"
+            BlueprintName = "Leucus"
+            ReferencedContainer = "container:Leucus.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </LaunchAction>
@@ -62,9 +62,9 @@
          <BuildableReference
             BuildableIdentifier = "primary"
             BlueprintIdentifier = "509321CC2F645FC30004661A"
-            BuildableName = "GhosttyTerminalApp.app"
-            BlueprintName = "GhosttyTerminalApp"
-            ReferencedContainer = "container:GhosttyTerminalApp.xcodeproj">
+            BuildableName = "Leucus.app"
+            BlueprintName = "Leucus"
+            ReferencedContainer = "container:Leucus.xcodeproj">
          </BuildableReference>
       </BuildableProductRunnable>
    </ProfileAction>

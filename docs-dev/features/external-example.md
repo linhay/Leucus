@@ -10,6 +10,6 @@
 
 ## 验收标准
 1. `Package.swift` 不再包含 `CanvasTerminalDemo` executable。
-2. 存在 `Example/CanvasTerminalExample.xcodeproj`。
-3. `xcodebuild -project Example/CanvasTerminalExample.xcodeproj -list` 能正确列出 target/scheme。
+2. 存在 `Example/Leucus.xcodeproj`。
+3. `xcodebuild -project Example/Leucus.xcodeproj -scheme Leucus -destination 'platform=macOS' build` 可成功构建示例 App。
 4. `make open-example` 可直接打开 Example 工程。

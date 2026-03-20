@@ -4,7 +4,7 @@ import SwiftUI
 
 @main
 @MainActor
-struct CanvasTerminalExampleApp: App {
+struct LeucusApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
 
     init() {
@@ -12,7 +12,7 @@ struct CanvasTerminalExampleApp: App {
     }
 
     var body: some Scene {
-        Window("CanvasTerminal Example", id: "main") {
+        Window("Leucus", id: "main") {
             TerminalRootView()
                 .background(WindowTabbingDisabler())
         }
