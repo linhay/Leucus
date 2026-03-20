@@ -1,4 +1,5 @@
 @_exported import InfiniteCanvasKit
+@_exported import FolderCard
 @_exported import TerminalCard
 
 public enum CanvasKit {

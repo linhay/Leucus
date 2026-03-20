@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import AppKit
 import Testing
 @testable import InfiniteCanvasKit
 
@@ -120,6 +121,63 @@ struct InfiniteCanvasKitTests {
   }
 
   @Test
+  func folderFactoryShouldCreateFolderKindNode() {
+    let node = CanvasNodeCard.folder(
+      at: CGPoint(x: 22, y: 48),
+      workingDirectory: "/Users/linhey/Workspace/demo",
+      title: "demo"
+    )
+    #expect(node.kind == .folder)
+    #expect(node.group == .folder)
+    #expect(node.groupLabel == "Workspace")
+    #expect(node.title == "demo")
+    #expect(node.workingDirectory == "/Users/linhey/Workspace/demo")
+    #expect(node.position == CGPoint(x: 22, y: 48))
+  }
+
+  @Test
+  func convertingTerminalToFolderShouldKeepIdentityAndGeometry() {
+    let terminal = CanvasNodeCard.terminal(
+      at: CGPoint(x: 30, y: 44),
+      workingDirectory: "/Users/linhey/Workspace/demo",
+      title: "workspace",
+      size: CGSize(width: 360, height: 240)
+    )
+
+    let folder = terminal.converted(to: .folder)
+
+    #expect(folder.id == terminal.id)
+    #expect(folder.kind == .folder)
+    #expect(folder.group == .folder)
+    #expect(folder.groupLabel == "Workspace")
+    #expect(folder.title == terminal.title)
+    #expect(folder.workingDirectory == terminal.workingDirectory)
+    #expect(folder.position == terminal.position)
+    #expect(folder.size == terminal.size)
+  }
+
+  @Test
+  func convertingFolderToTerminalShouldKeepIdentityAndGeometry() {
+    let folder = CanvasNodeCard.folder(
+      at: CGPoint(x: 60, y: 88),
+      workingDirectory: "/Users/linhey/Projects/canvas",
+      title: "canvas",
+      size: CGSize(width: 420, height: 260)
+    )
+
+    let terminal = folder.converted(to: .terminal)
+
+    #expect(terminal.id == folder.id)
+    #expect(terminal.kind == .terminal)
+    #expect(terminal.group == .folder)
+    #expect(terminal.groupLabel == "Projects")
+    #expect(terminal.title == folder.title)
+    #expect(terminal.workingDirectory == folder.workingDirectory)
+    #expect(terminal.position == folder.position)
+    #expect(terminal.size == folder.size)
+  }
+
+  @Test
   func arrowNavigationShouldPickNearestNodeInDirection() {
     let center = CanvasNodeCard(title: "Center", position: CGPoint(x: 0, y: 0), size: CGSize(width: 100, height: 100))
     let left = CanvasNodeCard(title: "Left", position: CGPoint(x: -300, y: 0), size: CGSize(width: 100, height: 100))
@@ -135,10 +193,15 @@ struct InfiniteCanvasKitTests {
   }
 
   @Test
-  func finderPathShouldOnlyBeAvailableForTerminalNode() {
+  func finderPathShouldBeAvailableForTerminalAndFolderNode() {
     let terminal = CanvasNodeCard.terminal(
       at: CGPoint(x: 0, y: 0),
       workingDirectory: "/Users/linhey/Workspace/demo"
+    )
+    let folder = CanvasNodeCard.folder(
+      at: CGPoint(x: 0, y: 0),
+      workingDirectory: "/Users/linhey/Workspace/demo",
+      title: "demo"
     )
     let placeholder = CanvasNodeCard(
       kind: .placeholder,
@@ -147,6 +210,7 @@ struct InfiniteCanvasKitTests {
     )
 
     #expect(finderOpenPath(for: terminal) == "/Users/linhey/Workspace/demo")
+    #expect(finderOpenPath(for: folder) == "/Users/linhey/Workspace/demo")
     #expect(finderOpenPath(for: placeholder) == nil)
   }
 
@@ -233,5 +297,74 @@ struct InfiniteCanvasKitTests {
 
     let cornerRects = CanvasNodeResizeGeometry.highlightRects(for: .bottomLeft, in: rect, thickness: 3)
     #expect(cornerRects.count == 2)
+  }
+
+  @Test
+  func bringNodeToFrontShouldMoveTargetToEnd() {
+    let a = CanvasNodeCard(title: "A", position: CGPoint(x: 0, y: 0))
+    let b = CanvasNodeCard(title: "B", position: CGPoint(x: 10, y: 10))
+    let c = CanvasNodeCard(title: "C", position: CGPoint(x: 20, y: 20))
+
+    let reordered = bringNodeToFront(id: b.id, in: [a, b, c])
+    #expect(reordered.map(\.id) == [a.id, c.id, b.id])
+  }
+
+  @Test
+  func bringNodeToFrontShouldKeepOrderWhenIDMissing() {
+    let a = CanvasNodeCard(title: "A", position: CGPoint(x: 0, y: 0))
+    let b = CanvasNodeCard(title: "B", position: CGPoint(x: 10, y: 10))
+    let missingID = UUID()
+
+    let reordered = bringNodeToFront(id: missingID, in: [a, b])
+    #expect(reordered.map(\.id) == [a.id, b.id])
+  }
+
+  @Test
+  @MainActor
+  func canvasSelectNodeShouldBringTargetToFront() {
+    let a = CanvasNodeCard(title: "A", position: CGPoint(x: 0, y: 0))
+    let b = CanvasNodeCard(title: "B", position: CGPoint(x: 100, y: 100))
+    let view = InfiniteCanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+    view.nodes = [a, b]
+
+    view.selectNode(id: a.id)
+
+    #expect(view.nodes.last?.id == a.id)
+    #expect(view.selectedNodeIDs == [a.id])
+  }
+
+  @Test
+  func folderBrowserEntriesShouldSortDirectoryBeforeFile() throws {
+    let baseURL = FileManager.default.temporaryDirectory
+      .appendingPathComponent("canvas-folder-browser-\(UUID().uuidString)", isDirectory: true)
+    try FileManager.default.createDirectory(at: baseURL, withIntermediateDirectories: true)
+    defer { try? FileManager.default.removeItem(at: baseURL) }
+
+    let subdir = baseURL.appendingPathComponent("sub", isDirectory: true)
+    try FileManager.default.createDirectory(at: subdir, withIntermediateDirectories: true)
+    let file = baseURL.appendingPathComponent("z.txt", isDirectory: false)
+    FileManager.default.createFile(atPath: file.path, contents: Data("ok".utf8))
+
+    let entries = FolderBrowserModel.entries(at: baseURL.path)
+    #expect(entries.count >= 2)
+
+    let names = entries.map(\.name)
+    #expect(names.first == "sub")
+    #expect(names.contains("z.txt"))
+    #expect(entries.first?.kind == .folder)
+  }
+
+  @Test
+  func folderBrowserParentPathShouldReturnNilAtRoot() {
+    #expect(FolderBrowserModel.parentPath(of: "/") == nil)
+  }
+
+  @Test
+  func folderBrowserResolvedPathShouldFallbackForInvalidInput() {
+    let resolved = FolderBrowserModel.resolvedDirectoryPath(
+      preferred: "/path/that/does/not/exist/\(UUID().uuidString)"
+    )
+    #expect(!resolved.isEmpty)
+    #expect(FileManager.default.fileExists(atPath: resolved))
   }
 }

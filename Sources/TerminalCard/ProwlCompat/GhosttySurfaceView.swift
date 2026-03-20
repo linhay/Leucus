@@ -17,10 +17,16 @@ enum GhosttyScrollWheelRouting {
   }
 
   static func shouldPassthroughToCanvas(
+    modifierFlags: NSEvent.ModifierFlags = [],
     deltaX: CGFloat,
     deltaY: CGFloat,
-    scrollbar: ScrollbarState?
+    scrollbar: ScrollbarState?,
+    terminalConsumedInGesture: Bool = false
   ) -> Bool {
+    if modifierFlags.contains(.command) {
+      return true
+    }
+
     if abs(deltaX) > abs(deltaY) {
       return true
     }
@@ -37,13 +43,21 @@ enum GhosttyScrollWheelRouting {
       return true
     }
 
+    let atBoundary: Bool
     if deltaY > 0 {
-      return scrollbar.offset >= scrollbar.maxOffset
+      atBoundary = scrollbar.offset == 0
+    } else if deltaY < 0 {
+      atBoundary = scrollbar.offset >= scrollbar.maxOffset
+    } else {
+      atBoundary = true
     }
-    if deltaY < 0 {
-      return scrollbar.offset == 0
+
+    // If terminal has already consumed this gesture, prevent chaining to canvas
+    // when the same gesture reaches the boundary.
+    if atBoundary && terminalConsumedInGesture {
+      return false
     }
-    return true
+    return atBoundary
   }
 }
 
@@ -108,6 +122,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   private var eventMonitor: Any?
   private var notificationObservers: [NSObjectProtocol] = []
   private var prevPressureStage: Int = 0
+  private var terminalConsumedInCurrentScrollGesture = false
   private lazy var cachedScreenContents = CachedValue<String>(duration: .milliseconds(500)) {
     [weak self] in
     self?.readScreenContents() ?? ""
@@ -136,6 +151,8 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
   var onFocusChange: ((Bool) -> Void)?
   var onScrollWheelPassthrough: ((NSEvent) -> Void)?
+  var onMagnifyPassthrough: ((NSEvent) -> Void)?
+  var onMouseDownInSurface: (() -> Void)?
 
   private var accessibilityPaneIndexHelp: String?
 
@@ -661,6 +678,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func mouseDown(with event: NSEvent) {
+    onMouseDownInSurface?()
     sendMouseButton(event, state: GHOSTTY_MOUSE_PRESS, button: GHOSTTY_MOUSE_LEFT)
   }
 
@@ -673,6 +691,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func rightMouseDown(with event: NSEvent) {
+    onMouseDownInSurface?()
     guard let surface else {
       super.rightMouseDown(with: event)
       return
@@ -697,6 +716,7 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func otherMouseDown(with event: NSEvent) {
+    onMouseDownInSurface?()
     sendMouseButton(event, state: GHOSTTY_MOUSE_PRESS, button: Self.ghosttyMouseButton(from: event.buttonNumber))
   }
 
@@ -734,10 +754,14 @@ final class GhosttySurfaceView: NSView, Identifiable {
   }
 
   override func scrollWheel(with event: NSEvent) {
+    prepareScrollGestureState(for: event)
+
     if GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+      modifierFlags: event.modifierFlags,
       deltaX: event.scrollingDeltaX,
       deltaY: event.scrollingDeltaY,
-      scrollbar: lastScrollbar
+      scrollbar: lastScrollbar,
+      terminalConsumedInGesture: terminalConsumedInCurrentScrollGesture
     ) {
       onScrollWheelPassthrough?(event)
       return
@@ -754,6 +778,38 @@ final class GhosttySurfaceView: NSView, Identifiable {
       scrollY *= 2
     }
     ghostty_surface_mouse_scroll(surface, scrollX, scrollY, scrollMods(for: event))
+
+    if abs(event.scrollingDeltaX) > 0.01 || abs(event.scrollingDeltaY) > 0.01 {
+      terminalConsumedInCurrentScrollGesture = true
+    }
+  }
+
+  override func magnify(with event: NSEvent) {
+    if let onMagnifyPassthrough {
+      onMagnifyPassthrough(event)
+      return
+    }
+    super.magnify(with: event)
+  }
+
+  private func prepareScrollGestureState(for event: NSEvent) {
+    let hasPhaseInfo = event.phase != [] || event.momentumPhase != []
+
+    // Mouse wheel events without phase are treated as independent gestures.
+    guard hasPhaseInfo else {
+      terminalConsumedInCurrentScrollGesture = false
+      return
+    }
+
+    if event.phase.contains(.mayBegin) || event.phase.contains(.began) || event.momentumPhase.contains(.began) {
+      terminalConsumedInCurrentScrollGesture = false
+    }
+
+    if event.phase.contains(.ended) || event.phase.contains(.cancelled) ||
+      event.momentumPhase.contains(.ended) || event.momentumPhase.contains(.cancelled)
+    {
+      terminalConsumedInCurrentScrollGesture = false
+    }
   }
 
   override func pressureChange(with event: NSEvent) {

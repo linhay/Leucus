@@ -12,6 +12,10 @@ let package = Package(
             targets: ["TerminalCard"]
         ),
         .library(
+            name: "FolderCard",
+            targets: ["FolderCard"]
+        ),
+        .library(
             name: "CanvasKit",
             targets: ["CanvasKit"]
         ),
@@ -22,10 +26,14 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "/Users/linhey/Downloads/libghostty-spm-main"),
+        .package(url: "https://github.com/linhay/STFilePath.git", from: "1.3.0"),
     ],
     targets: [
         .target(
-            name: "InfiniteCanvasKit"
+            name: "InfiniteCanvasKit",
+            dependencies: [
+                .product(name: "STFilePath", package: "STFilePath"),
+            ]
         ),
         .target(
             name: "TerminalCard",
@@ -40,10 +48,18 @@ let package = Package(
             ]
         ),
         .target(
+            name: "FolderCard",
+            dependencies: [
+                "InfiniteCanvasKit",
+            ],
+            path: "Sources/FolderCard"
+        ),
+        .target(
             name: "CanvasKit",
             dependencies: [
                 "InfiniteCanvasKit",
                 "TerminalCard",
+                "FolderCard",
             ]
         ),
         .testTarget(

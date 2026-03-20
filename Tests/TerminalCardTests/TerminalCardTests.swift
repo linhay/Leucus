@@ -1,3 +1,4 @@
+import AppKit
 import Testing
 @testable import TerminalCard
 
@@ -62,14 +63,14 @@ struct TerminalCardTests {
     #expect(
       GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
         deltaX: 0,
-        deltaY: -10,
+        deltaY: 10,
         scrollbar: top
       )
     )
     #expect(
       !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
         deltaX: 0,
-        deltaY: 10,
+        deltaY: -10,
         scrollbar: top
       )
     )
@@ -78,14 +79,14 @@ struct TerminalCardTests {
     #expect(
       GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
         deltaX: 0,
-        deltaY: 10,
+        deltaY: -10,
         scrollbar: bottom
       )
     )
     #expect(
       !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
         deltaX: 0,
-        deltaY: -10,
+        deltaY: 10,
         scrollbar: bottom
       )
     )
@@ -120,6 +121,51 @@ struct TerminalCardTests {
         deltaX: 12,
         deltaY: 2,
         scrollbar: middle
+      )
+    )
+  }
+
+  @Test
+  func terminalCommandScrollAlwaysRoutesToCanvas() {
+    let middle = GhosttyScrollWheelRouting.ScrollbarState(total: 100, offset: 50, length: 20)
+
+    #expect(
+      GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        modifierFlags: [.command],
+        deltaX: 0,
+        deltaY: 10,
+        scrollbar: middle
+      )
+    )
+    #expect(
+      GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        modifierFlags: [.command],
+        deltaX: 0,
+        deltaY: -10,
+        scrollbar: middle
+      )
+    )
+  }
+
+  @Test
+  func terminalScrollReachingBoundaryWithinSameGestureShouldNotRouteCanvas() {
+    let top = GhosttyScrollWheelRouting.ScrollbarState(total: 100, offset: 0, length: 20)
+    #expect(
+      !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: 10,
+        scrollbar: top,
+        terminalConsumedInGesture: true
+      )
+    )
+
+    let bottom = GhosttyScrollWheelRouting.ScrollbarState(total: 100, offset: 80, length: 20)
+    #expect(
+      !GhosttyScrollWheelRouting.shouldPassthroughToCanvas(
+        deltaX: 0,
+        deltaY: -10,
+        scrollbar: bottom,
+        terminalConsumedInGesture: true
       )
     )
   }

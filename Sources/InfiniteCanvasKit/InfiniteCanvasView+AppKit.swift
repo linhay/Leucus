@@ -71,6 +71,10 @@ public final class InfiniteCanvasView: NSView {
 
   public override var acceptsFirstResponder: Bool { true }
 
+  public func selectNode(id: UUID) {
+    selectSingleNode(id)
+  }
+
   public override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
     wantsLayer = true
@@ -141,14 +145,12 @@ public final class InfiniteCanvasView: NSView {
         startInWorld: viewport.viewToWorld(point, viewportSize: bounds.size),
         initialNode: hit.node
       )
-      selectedNodeIDs = [hit.node.id]
+      selectSingleNode(hit.node.id)
       return
     }
 
     if compact || headerRect(for: hit.rectInView).contains(point) {
-      if !selectedNodeIDs.contains(hit.node.id) {
-        selectedNodeIDs = [hit.node.id]
-      }
+      selectSingleNode(hit.node.id)
       let startWorld = viewport.viewToWorld(point, viewportSize: bounds.size)
       let initial = Dictionary(uniqueKeysWithValues: nodes
         .filter { selectedNodeIDs.contains($0.id) }
@@ -157,7 +159,7 @@ public final class InfiniteCanvasView: NSView {
       return
     }
 
-    selectedNodeIDs = [hit.node.id]
+    selectSingleNode(hit.node.id)
     interaction = .idle
   }
 
@@ -274,7 +276,7 @@ public final class InfiniteCanvasView: NSView {
 
     if let hit = hitTestNode(at: point) {
       contextMenuNodeID = hit.node.id
-      selectedNodeIDs = [hit.node.id]
+      selectSingleNode(hit.node.id)
 
       let menu = NSMenu(title: "Node")
       let closeItem = NSMenuItem(
@@ -293,11 +295,47 @@ public final class InfiniteCanvasView: NSView {
       openFinder.target = self
       openFinder.isEnabled = finderPath(forNodeID: hit.node.id) != nil
       menu.addItem(openFinder)
+
+      switch hit.node.kind {
+      case .terminal:
+        let switchToFolder = NSMenuItem(
+          title: "切换为文件夹卡片",
+          action: #selector(switchContextCardToFolder(_:)),
+          keyEquivalent: ""
+        )
+        switchToFolder.target = self
+        menu.addItem(switchToFolder)
+      case .folder:
+        let switchToTerminal = NSMenuItem(
+          title: "切换为终端卡片",
+          action: #selector(switchContextCardToTerminal(_:)),
+          keyEquivalent: ""
+        )
+        switchToTerminal.target = self
+        menu.addItem(switchToTerminal)
+      case .placeholder:
+        let switchToTerminal = NSMenuItem(
+          title: "切换为终端卡片",
+          action: #selector(switchContextCardToTerminal(_:)),
+          keyEquivalent: ""
+        )
+        switchToTerminal.target = self
+        menu.addItem(switchToTerminal)
+      }
       return menu
     }
 
     contextMenuNodeID = nil
     let menu = NSMenu(title: "Canvas")
+    let addFolder = NSMenuItem(
+      title: "添加文件夹卡片",
+      action: #selector(addFolderCardFromContextMenu(_:)),
+      keyEquivalent: ""
+    )
+    addFolder.target = self
+    addFolder.representedObject = NSValue(point: point)
+    menu.addItem(addFolder)
+
     let addTerminal = NSMenuItem(
       title: "添加终端卡片",
       action: #selector(addTerminalCardFromContextMenu(_:)),
@@ -327,17 +365,15 @@ public final class InfiniteCanvasView: NSView {
     var lastID: UUID?
     for (index, url) in directories.enumerated() {
       let offset = CGFloat(index) * 24
-      let title = url.lastPathComponent.isEmpty ? "Terminal" : url.lastPathComponent
-      let node = CanvasNodeCard.terminal(
+      let node = CanvasNodeCard.folder(
         at: CGPoint(x: anchorWorld.x + offset, y: anchorWorld.y - offset),
-        workingDirectory: url.path,
-        title: title
+        workingDirectory: url.path
       )
       nodes.append(node)
       lastID = node.id
     }
     if let lastID {
-      selectedNodeIDs = [lastID]
+      selectSingleNode(lastID)
     }
     return true
   }
@@ -509,6 +545,16 @@ public final class InfiniteCanvasView: NSView {
   }
 
   @objc
+  private func addFolderCardFromContextMenu(_ sender: NSMenuItem) {
+    let pointInView = (sender.representedObject as? NSValue)?.pointValue ?? contextMenuPointInView ?? .zero
+    appendFolderCard(
+      at: viewport.viewToWorld(pointInView, viewportSize: bounds.size),
+      workingDirectory: nil,
+      title: "Folder"
+    )
+  }
+
+  @objc
   private func addTerminalCardFromContextMenu(_ sender: NSMenuItem) {
     let pointInView = (sender.representedObject as? NSValue)?.pointValue ?? contextMenuPointInView ?? .zero
     appendTerminalCard(
@@ -534,6 +580,18 @@ public final class InfiniteCanvasView: NSView {
       return
     }
     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+  }
+
+  @objc
+  private func switchContextCardToTerminal(_: NSMenuItem) {
+    guard let id = contextMenuNodeID else { return }
+    switchContextCard(id: id, to: .terminal)
+  }
+
+  @objc
+  private func switchContextCardToFolder(_: NSMenuItem) {
+    guard let id = contextMenuNodeID else { return }
+    switchContextCard(id: id, to: .folder)
   }
 
   private func drawHoveredResizeBorder(in rect: CGRect, handle: CanvasNodeResizeHandle) {
@@ -686,6 +744,12 @@ public final class InfiniteCanvasView: NSView {
         return "\(groupText) · \(workingDirectory)"
       }
       return groupText
+    case .folder:
+      let groupText = "文件夹大类: \(node.groupLabel ?? "未指定")"
+      if let workingDirectory = node.workingDirectory, !workingDirectory.isEmpty {
+        return "\(groupText) · \(workingDirectory)"
+      }
+      return groupText
     case .placeholder:
       return "空节点（类型待定）"
     }
@@ -695,6 +759,8 @@ public final class InfiniteCanvasView: NSView {
     switch kind {
     case .terminal:
       return "⌨"
+    case .folder:
+      return "📁"
     case .placeholder:
       return "□"
     }
@@ -716,7 +782,23 @@ public final class InfiniteCanvasView: NSView {
       title: title
     )
     nodes.append(node)
-    selectedNodeIDs = [node.id]
+    selectSingleNode(node.id)
+  }
+
+  private func appendFolderCard(at worldPoint: CGPoint, workingDirectory: String?, title: String?) {
+    let node = CanvasNodeCard.folder(
+      at: worldPoint,
+      workingDirectory: workingDirectory,
+      title: title
+    )
+    nodes.append(node)
+    selectSingleNode(node.id)
+  }
+
+  private func switchContextCard(id: UUID, to kind: CanvasNodeKind) {
+    guard let index = nodes.firstIndex(where: { $0.id == id }) else { return }
+    nodes[index] = nodes[index].converted(to: kind)
+    selectSingleNode(id)
   }
 
   private func finderPath(forNodeID id: UUID) -> String? {
@@ -751,7 +833,19 @@ public final class InfiniteCanvasView: NSView {
   private func navigateSelection(to direction: CanvasNavigationDirection) {
     let currentID = selectedNodeIDs.first
     guard let nextID = nextNodeID(from: currentID, direction: direction, in: nodes) else { return }
-    selectedNodeIDs = [nextID]
+    selectSingleNode(nextID)
+  }
+
+  private func selectSingleNode(_ id: UUID) {
+    guard nodes.contains(where: { $0.id == id }) else { return }
+    let reordered = bringNodeToFront(id: id, in: nodes)
+    if reordered != nodes {
+      nodes = reordered
+    }
+    let nextSelection: Set<UUID> = [id]
+    if selectedNodeIDs != nextSelection {
+      selectedNodeIDs = nextSelection
+    }
   }
 
   private func droppedDirectoryURLs(from pasteboard: NSPasteboard) -> [URL] {

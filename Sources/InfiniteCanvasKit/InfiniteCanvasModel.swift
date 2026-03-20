@@ -1,5 +1,6 @@
 import CoreGraphics
 import Foundation
+import STFilePath
 
 public enum CanvasScrollPanMapping {
   public static func panDelta(scrollDeltaX: CGFloat, scrollDeltaY: CGFloat) -> CGSize {
@@ -10,6 +11,7 @@ public enum CanvasScrollPanMapping {
 public enum CanvasNodeKind: String, Sendable, Equatable, Codable {
   case placeholder
   case terminal
+  case folder
 }
 
 public enum CanvasNodeGroup: String, Sendable, Equatable, Codable {
@@ -155,11 +157,11 @@ public extension CanvasNodeCard {
     title: String = "Terminal",
     size: CGSize = CGSize(width: 320, height: 220)
   ) -> CanvasNodeCard {
-    let groupLabel = folderMajorCategory(from: workingDirectory)
+    let descriptor = folderPathDescriptor(from: workingDirectory)
     return CanvasNodeCard(
       kind: .terminal,
       group: .folder,
-      groupLabel: groupLabel,
+      groupLabel: descriptor.groupLabel,
       title: title,
       workingDirectory: workingDirectory,
       position: position,
@@ -167,22 +169,79 @@ public extension CanvasNodeCard {
     )
   }
 
-  private static func folderMajorCategory(from workingDirectory: String?) -> String {
-    guard let workingDirectory, !workingDirectory.isEmpty else {
-      return "未指定"
+  static func folder(
+    at position: CGPoint,
+    workingDirectory: String? = nil,
+    title: String? = nil,
+    size: CGSize = CGSize(width: 320, height: 220)
+  ) -> CanvasNodeCard {
+    let descriptor = folderPathDescriptor(from: workingDirectory)
+    let resolvedTitle: String
+    if let title, !title.isEmpty {
+      resolvedTitle = title
+    } else {
+      resolvedTitle = descriptor.name ?? "Folder"
     }
 
-    let url = URL(fileURLWithPath: workingDirectory)
-    let components = url.pathComponents.filter { $0 != "/" }
+    return CanvasNodeCard(
+      kind: .folder,
+      group: .folder,
+      groupLabel: descriptor.groupLabel,
+      title: resolvedTitle,
+      workingDirectory: workingDirectory,
+      position: position,
+      size: size
+    )
+  }
+
+  func converted(to kind: CanvasNodeKind) -> CanvasNodeCard {
+    switch kind {
+    case .terminal, .folder:
+      let descriptor = Self.folderPathDescriptor(from: workingDirectory)
+      return CanvasNodeCard(
+        id: id,
+        kind: kind,
+        group: .folder,
+        groupLabel: descriptor.groupLabel,
+        title: title,
+        workingDirectory: workingDirectory,
+        position: position,
+        size: size
+      )
+    case .placeholder:
+      return CanvasNodeCard(
+        id: id,
+        kind: .placeholder,
+        group: .unknown,
+        groupLabel: nil,
+        title: title,
+        workingDirectory: workingDirectory,
+        position: position,
+        size: size
+      )
+    }
+  }
+
+  private static func folderPathDescriptor(
+    from workingDirectory: String?
+  ) -> (groupLabel: String, name: String?) {
+    guard let workingDirectory, !workingDirectory.isEmpty else {
+      return ("未指定", nil)
+    }
+
+    let folder = STFolder(workingDirectory)
+    let components = folder.url.pathComponents.filter { $0 != "/" }
+    let folderName = folder.attributes.name.isEmpty ? nil : folder.attributes.name
+
     if components.isEmpty {
-      return "根目录"
+      return ("根目录", folderName)
     }
 
     if components.first == "Users", components.count >= 3 {
-      return components[2]
+      return (components[2], folderName)
     }
 
-    return components.first ?? "未指定"
+    return (components.first ?? "未指定", folderName)
   }
 }
 
@@ -353,9 +412,21 @@ public func selectedNodeIDs(
   Set(nodes.filter { $0.intersects(worldSelectionRect) }.map(\.id))
 }
 
+public func bringNodeToFront(id: UUID, in nodes: [CanvasNodeCard]) -> [CanvasNodeCard] {
+  guard let index = nodes.firstIndex(where: { $0.id == id }) else { return nodes }
+  if index == nodes.index(before: nodes.endIndex) {
+    return nodes
+  }
+
+  var reordered = nodes
+  let node = reordered.remove(at: index)
+  reordered.append(node)
+  return reordered
+}
+
 public func finderOpenPath(for node: CanvasNodeCard) -> String? {
   switch node.kind {
-  case .terminal:
+  case .terminal, .folder:
     guard let path = node.workingDirectory, !path.isEmpty else { return nil }
     return path
   case .placeholder:

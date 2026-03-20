@@ -87,6 +87,14 @@ public final class SimpleTerminalHostView: NSView {
     get { surfaceView.onScrollWheelPassthrough }
     set { surfaceView.onScrollWheelPassthrough = newValue }
   }
+  public var onMagnifyPassthrough: ((NSEvent) -> Void)? {
+    get { surfaceView.onMagnifyPassthrough }
+    set { surfaceView.onMagnifyPassthrough = newValue }
+  }
+  public var onMouseDownInSurface: (() -> Void)? {
+    get { surfaceView.onMouseDownInSurface }
+    set { surfaceView.onMouseDownInSurface = newValue }
+  }
 
   public init(terminal: SimpleTerminal? = nil) {
     let resolvedTerminal = terminal ?? .init()
