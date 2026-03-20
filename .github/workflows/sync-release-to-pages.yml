@@ -1,6 +1,6 @@
 name: Sync Release Assets To Pages
 
-on:
+'on':
   release:
     types:
       - published
