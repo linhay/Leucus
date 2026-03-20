@@ -28,7 +28,7 @@
    - App 内“检查更新…”可拉到新版本。
 
 ## 5. 自动同步（已接入）
-仓库已提供工作流：`.github/workflows/sync-release-to-pages.yml`
+仓库已提供工作流：`.github/workflows/release-assets-to-pages.yml`
 
 触发方式：
 1. 发布 GitHub Release（`published`）自动触发。

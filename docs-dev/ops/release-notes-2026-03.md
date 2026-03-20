@@ -14,5 +14,5 @@
 - 新增：`Leucus` 接入 Sparkle 自动升级，应用菜单增加“检查更新…”入口，支持手动触发更新检查。
 - 新增：`Leucus` 显式 `Info.plist`（包含 `SUFeedURL` / `SUPublicEDKey` / 自动检查相关键），并通过 `LEUCUS_APPCAST_URL` / `LEUCUS_SPARKLE_PUBLIC_KEY` 注入；未配置有效 feed 时自动禁用菜单动作。
 - 新增：GitHub Pages 分发模板配置（`LEUCUS_GITHUB_OWNER` / `LEUCUS_GITHUB_REPO` -> `LEUCUS_APPCAST_URL`），为仓库改名后快速切换 appcast 地址做准备。
-- 新增：GitHub Actions 工作流 `.github/workflows/sync-release-to-pages.yml`，在 release 发布后自动同步 `appcast.xml` 与 `.zip` 到 `gh-pages`。
+- 新增：GitHub Actions 工作流 `.github/workflows/release-assets-to-pages.yml`，在 release 发布后自动同步 `appcast.xml` 与 `.zip` 到 `gh-pages`。
 - 验证：`xcodebuild -project Example/Leucus.xcodeproj -scheme Leucus -destination 'platform=macOS' build` 成功，产物 `Info.plist` 已包含 Sparkle 关键字段。

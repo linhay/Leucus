@@ -1,6 +1,6 @@
-name: Sync Release Assets To Pages
+name: Release Assets To Pages
 
-'on':
+on:
   release:
     types:
       - published
@@ -23,7 +23,7 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve release id and tag
+      - name: Resolve release
         id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -40,7 +40,6 @@ jobs:
             else
               endpoint="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/latest"
             fi
-
             release_json="$(
               curl -fsSL \
                 -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -54,7 +53,7 @@ jobs:
           echo "release_id=${release_id}" >> "${GITHUB_OUTPUT}"
           echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
 
-      - name: Download release assets
+      - name: Download appcast and zip assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ steps.release.outputs.release_id }}
@@ -93,7 +92,6 @@ jobs:
 
           mkdir -p gh-pages-worktree/releases
           cp release-assets/appcast.xml gh-pages-worktree/appcast.xml
-
           if compgen -G "release-assets/*.zip" > /dev/null; then
             cp release-assets/*.zip gh-pages-worktree/releases/
           fi
