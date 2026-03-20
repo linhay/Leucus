@@ -32,6 +32,7 @@ public final class InfiniteCanvasView: NSView {
   }
 
   public var onResizeInteractionChanged: ((Bool) -> Void)?
+  public var onDetachNodeRequested: ((UUID) -> Void)?
 
   public var backgroundColor = NSColor(calibratedWhite: 0.09, alpha: 1) {
     didSet { needsDisplay = true }
@@ -63,6 +64,7 @@ public final class InfiniteCanvasView: NSView {
   private let resizeHandleSize: CGFloat = 10
   private let resizeEdgeHitWidth: CGFloat = 12
   private let resizeHoverStrokeWidth: CGFloat = 2.5
+  private let organizeSpacing: CGFloat = 24
 
   private struct HoveredResizeTarget: Equatable {
     let id: UUID
@@ -73,6 +75,26 @@ public final class InfiniteCanvasView: NSView {
 
   public func selectNode(id: UUID) {
     selectSingleNode(id)
+  }
+
+  public func organizeCards(spacing: CGFloat = 24) {
+    guard !nodes.isEmpty else { return }
+    let organized = organizeNodeCards(nodes, spacing: spacing)
+    if organized != nodes {
+      nodes = organized
+    }
+  }
+
+  public func alignSelectionToGrid(step: CGFloat = 24) {
+    guard !nodes.isEmpty else { return }
+    let aligned = alignNodeCardsToGrid(
+      nodes,
+      targetIDs: selectedNodeIDs,
+      step: step
+    )
+    if aligned != nodes {
+      nodes = aligned
+    }
   }
 
   public override init(frame frameRect: NSRect) {
@@ -296,6 +318,17 @@ public final class InfiniteCanvasView: NSView {
       openFinder.isEnabled = finderPath(forNodeID: hit.node.id) != nil
       menu.addItem(openFinder)
 
+      let detachWindow = NSMenuItem(
+        title: "展开为独立窗口",
+        action: #selector(detachContextCardToWindow(_:)),
+        keyEquivalent: ""
+      )
+      detachWindow.target = self
+      detachWindow.isEnabled = onDetachNodeRequested != nil && hit.node.kind != .placeholder
+      menu.addItem(detachWindow)
+      menu.addItem(.separator())
+      appendArrangeMenuItems(to: menu)
+
       switch hit.node.kind {
       case .terminal:
         let switchToFolder = NSMenuItem(
@@ -344,6 +377,8 @@ public final class InfiniteCanvasView: NSView {
     addTerminal.target = self
     addTerminal.representedObject = NSValue(point: point)
     menu.addItem(addTerminal)
+    menu.addItem(.separator())
+    appendArrangeMenuItems(to: menu)
     return menu
   }
 
@@ -565,6 +600,11 @@ public final class InfiniteCanvasView: NSView {
   }
 
   @objc
+  private func organizeCardsFromContextMenu(_: NSMenuItem) {
+    organizeCards(spacing: organizeSpacing)
+  }
+
+  @objc
   private func closeContextCard(_: NSMenuItem) {
     guard let id = contextMenuNodeID else { return }
     removeNode(id: id)
@@ -580,6 +620,12 @@ public final class InfiniteCanvasView: NSView {
       return
     }
     NSWorkspace.shared.activateFileViewerSelecting([URL(fileURLWithPath: path)])
+  }
+
+  @objc
+  private func detachContextCardToWindow(_: NSMenuItem) {
+    guard let id = contextMenuNodeID else { return }
+    onDetachNodeRequested?(id)
   }
 
   @objc
@@ -799,6 +845,16 @@ public final class InfiniteCanvasView: NSView {
     guard let index = nodes.firstIndex(where: { $0.id == id }) else { return }
     nodes[index] = nodes[index].converted(to: kind)
     selectSingleNode(id)
+  }
+
+  private func appendArrangeMenuItems(to menu: NSMenu) {
+    let organize = NSMenuItem(
+      title: "自动整理卡片",
+      action: #selector(organizeCardsFromContextMenu(_:)),
+      keyEquivalent: ""
+    )
+    organize.target = self
+    menu.addItem(organize)
   }
 
   private func finderPath(forNodeID id: UUID) -> String? {

@@ -63,6 +63,15 @@ let package = Package(
             ]
         ),
         .testTarget(
+            name: "CanvasKitTests",
+            dependencies: [
+                "CanvasKit",
+                "InfiniteCanvasKit",
+                "FolderCard",
+            ],
+            path: "Tests/CanvasKitTests"
+        ),
+        .testTarget(
             name: "InfiniteCanvasKitTests",
             dependencies: ["InfiniteCanvasKit"]
         ),

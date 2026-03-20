@@ -334,6 +334,76 @@ struct InfiniteCanvasKitTests {
   }
 
   @Test
+  @MainActor
+  func canvasAlignSelectionToGridShouldSnapOnlySelectedNode() {
+    let a = CanvasNodeCard(title: "A", position: CGPoint(x: 13, y: 27), size: CGSize(width: 120, height: 80))
+    let b = CanvasNodeCard(title: "B", position: CGPoint(x: 37, y: 49), size: CGSize(width: 120, height: 80))
+    let view = InfiniteCanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+    view.nodes = [a, b]
+    view.selectedNodeIDs = [b.id]
+
+    view.alignSelectionToGrid(step: 24)
+
+    #expect(view.nodes[0].position == a.position)
+    #expect(view.nodes[1].position == CGPoint(x: 48, y: 48))
+  }
+
+  @Test
+  @MainActor
+  func nodeContextMenuShouldContainDetachActionAndEmitNodeID() {
+    let node = CanvasNodeCard.terminal(at: .zero, title: "Terminal")
+    let view = InfiniteCanvasView(frame: CGRect(x: 0, y: 0, width: 800, height: 600))
+    view.nodes = [node]
+
+    var requestedID: UUID?
+    view.onDetachNodeRequested = { requestedID = $0 }
+
+    let window = NSWindow(
+      contentRect: CGRect(x: 100, y: 100, width: 800, height: 600),
+      styleMask: [.titled, .closable],
+      backing: .buffered,
+      defer: false
+    )
+    window.contentView = view
+    defer {
+      window.orderOut(nil)
+      window.close()
+    }
+
+    let pointInView = CGPoint(x: 410, y: 310)
+    let pointInWindow = view.convert(pointInView, to: nil)
+    guard
+      let event = NSEvent.mouseEvent(
+        with: .rightMouseDown,
+        location: pointInWindow,
+        modifierFlags: [],
+        timestamp: 0,
+        windowNumber: window.windowNumber,
+        context: nil,
+        eventNumber: 0,
+        clickCount: 1,
+        pressure: 1
+      )
+    else {
+      Issue.record("failed to create right click event")
+      return
+    }
+
+    guard let menu = view.menu(for: event) else {
+      Issue.record("node context menu should be available")
+      return
+    }
+
+    guard let index = menu.items.firstIndex(where: { $0.title == "展开为独立窗口" }) else {
+      Issue.record("detach action should be present in node context menu")
+      return
+    }
+
+    menu.performActionForItem(at: index)
+    #expect(requestedID == node.id)
+  }
+
+  @Test
   func folderBrowserEntriesShouldSortDirectoryBeforeFile() throws {
     let baseURL = FileManager.default.temporaryDirectory
       .appendingPathComponent("canvas-folder-browser-\(UUID().uuidString)", isDirectory: true)
@@ -366,5 +436,45 @@ struct InfiniteCanvasKitTests {
     )
     #expect(!resolved.isEmpty)
     #expect(FileManager.default.fileExists(atPath: resolved))
+  }
+
+  @Test
+  func organizeNodeCardsShouldCreateBalancedNonOverlappingGrid() {
+    let nodes: [CanvasNodeCard] = [
+      CanvasNodeCard(title: "A", position: CGPoint(x: 140, y: 30), size: CGSize(width: 200, height: 120)),
+      CanvasNodeCard(title: "B", position: CGPoint(x: 50, y: 260), size: CGSize(width: 180, height: 140)),
+      CanvasNodeCard(title: "C", position: CGPoint(x: 300, y: -40), size: CGSize(width: 160, height: 110)),
+      CanvasNodeCard(title: "D", position: CGPoint(x: -20, y: 80), size: CGSize(width: 220, height: 130)),
+      CanvasNodeCard(title: "E", position: CGPoint(x: 80, y: -160), size: CGSize(width: 190, height: 100)),
+    ]
+
+    let organized = organizeNodeCards(nodes, spacing: 20)
+
+    #expect(organized.map(\.id) == nodes.map(\.id))
+    #expect(organized[0].position == CGPoint(x: -20, y: 280))
+    #expect(organized[1].position == CGPoint(x: 200, y: 260))
+    #expect(organized[2].position == CGPoint(x: 400, y: 290))
+    #expect(organized[3].position == CGPoint(x: -20, y: 110))
+    #expect(organized[4].position == CGPoint(x: 220, y: 140))
+
+    for i in organized.indices {
+      for j in organized.indices where j > i {
+        #expect(!organized[i].worldRect.intersects(organized[j].worldRect))
+      }
+    }
+  }
+
+  @Test
+  func alignNodeCardsToGridShouldOnlyAffectTargetNodes() {
+    let a = CanvasNodeCard(title: "A", position: CGPoint(x: 13, y: 27), size: CGSize(width: 100, height: 80))
+    let b = CanvasNodeCard(title: "B", position: CGPoint(x: 37, y: 49), size: CGSize(width: 120, height: 90))
+    let c = CanvasNodeCard(title: "C", position: CGPoint(x: 75, y: 11), size: CGSize(width: 110, height: 70))
+    let nodes = [a, b, c]
+
+    let aligned = alignNodeCardsToGrid(nodes, targetIDs: [b.id], step: 24)
+
+    #expect(aligned[0].position == a.position)
+    #expect(aligned[1].position == CGPoint(x: 48, y: 48))
+    #expect(aligned[2].position == c.position)
   }
 }

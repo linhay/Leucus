@@ -424,6 +424,66 @@ public func bringNodeToFront(id: UUID, in nodes: [CanvasNodeCard]) -> [CanvasNod
   return reordered
 }
 
+public func organizeNodeCards(
+  _ nodes: [CanvasNodeCard],
+  spacing: CGFloat = 24
+) -> [CanvasNodeCard] {
+  guard !nodes.isEmpty else { return nodes }
+  let safeSpacing = max(0, spacing)
+  let columns = max(1, Int(ceil(sqrt(Double(nodes.count)))))
+
+  let startX = nodes.map(\.position.x).min() ?? 0
+  let startTop = nodes.map { $0.position.y + $0.size.height }.max() ?? 0
+
+  var next = nodes
+  var rowTop = startTop
+  var start = 0
+
+  while start < next.count {
+    let end = min(start + columns, next.count)
+    let rowIndices = Array(start..<end)
+    let rowHeight = rowIndices.map { next[$0].size.height }.max() ?? 0
+
+    var x = startX
+    for index in rowIndices {
+      next[index].position = CGPoint(
+        x: x,
+        y: rowTop - next[index].size.height
+      )
+      x += next[index].size.width + safeSpacing
+    }
+
+    rowTop -= rowHeight + safeSpacing
+    start = end
+  }
+
+  return next
+}
+
+public func alignNodeCardsToGrid(
+  _ nodes: [CanvasNodeCard],
+  targetIDs: Set<UUID>,
+  step: CGFloat = 24
+) -> [CanvasNodeCard] {
+  let safeStep = max(0, step)
+  guard safeStep > 0 else { return nodes }
+
+  let shouldAlignAll = targetIDs.isEmpty
+  return nodes.map { node in
+    guard shouldAlignAll || targetIDs.contains(node.id) else { return node }
+    var aligned = node
+    aligned.position = CGPoint(
+      x: roundedToGrid(node.position.x, step: safeStep),
+      y: roundedToGrid(node.position.y, step: safeStep)
+    )
+    return aligned
+  }
+}
+
+private func roundedToGrid(_ value: CGFloat, step: CGFloat) -> CGFloat {
+  (value / step).rounded() * step
+}
+
 public func finderOpenPath(for node: CanvasNodeCard) -> String? {
   switch node.kind {
   case .terminal, .folder:
