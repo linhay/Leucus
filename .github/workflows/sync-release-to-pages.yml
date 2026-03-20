@@ -2,20 +2,16 @@ name: Sync Release Assets To Pages
 
 on:
   release:
-    types: [published]
+    types:
+      - published
   workflow_dispatch:
     inputs:
       release_tag:
-        description: "Release tag to sync (empty = latest release)"
+        description: Release tag to sync (empty = latest)
         required: false
-        type: string
 
 permissions:
   contents: write
-
-concurrency:
-  group: sync-release-to-pages
-  cancel-in-progress: false
 
 jobs:
   sync:
@@ -27,11 +23,11 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Resolve release
+      - name: Resolve release id and tag
         id: release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          REQUESTED_TAG: ${{ github.event.inputs.release_tag || '' }}
+          REQUESTED_TAG: ${{ github.event.inputs.release_tag }}
         run: |
           set -euo pipefail
 
@@ -39,43 +35,33 @@ jobs:
             release_id="$(jq -r '.release.id' "${GITHUB_EVENT_PATH}")"
             release_tag="$(jq -r '.release.tag_name' "${GITHUB_EVENT_PATH}")"
           else
-            requested_tag="${REQUESTED_TAG}"
-            if [[ -n "${requested_tag}" ]]; then
-              release_json="$(
-                curl -fsSL \
-                  -H "Authorization: Bearer ${GH_TOKEN}" \
-                  -H "Accept: application/vnd.github+json" \
-                  "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/tags/${requested_tag}"
-              )"
+            if [[ -n "${REQUESTED_TAG:-}" ]]; then
+              endpoint="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/tags/${REQUESTED_TAG}"
             else
-              release_json="$(
-                curl -fsSL \
-                  -H "Authorization: Bearer ${GH_TOKEN}" \
-                  -H "Accept: application/vnd.github+json" \
-                  "${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/latest"
-              )"
+              endpoint="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/latest"
             fi
+
+            release_json="$(
+              curl -fsSL \
+                -H "Authorization: Bearer ${GH_TOKEN}" \
+                -H "Accept: application/vnd.github+json" \
+                "${endpoint}"
+            )"
             release_id="$(jq -r '.id' <<< "${release_json}")"
             release_tag="$(jq -r '.tag_name' <<< "${release_json}")"
           fi
 
-          if [[ -z "${release_id}" || "${release_id}" == "null" ]]; then
-            echo "Failed to resolve release id."
-            exit 1
-          fi
-
           echo "release_id=${release_id}" >> "${GITHUB_OUTPUT}"
           echo "release_tag=${release_tag}" >> "${GITHUB_OUTPUT}"
-          echo "Resolved release: ${release_tag} (${release_id})"
 
-      - name: Download appcast and zip assets
+      - name: Download release assets
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           RELEASE_ID: ${{ steps.release.outputs.release_id }}
         run: |
           set -euo pipefail
-
           mkdir -p release-assets
+
           assets_api="${GITHUB_API_URL}/repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}/assets?per_page=100"
           curl -fsSL \
             -H "Authorization: Bearer ${GH_TOKEN}" \
@@ -86,7 +72,6 @@ jobs:
           jq -r '.[] | [.name, .url] | @tsv' release-assets/assets.json | while IFS=$'\t' read -r asset_name asset_api_url; do
             case "${asset_name}" in
               appcast.xml|*.zip)
-                echo "Downloading ${asset_name}"
                 curl -fsSL \
                   -H "Authorization: Bearer ${GH_TOKEN}" \
                   -H "Accept: application/octet-stream" \
@@ -96,32 +81,25 @@ jobs:
             esac
           done
 
-          if [[ ! -f "release-assets/appcast.xml" ]]; then
-            echo "Missing required release asset: appcast.xml"
-            exit 1
-          fi
+          test -f release-assets/appcast.xml
 
-      - name: Sync files to gh-pages
+      - name: Publish to gh-pages
         env:
           RELEASE_TAG: ${{ steps.release.outputs.release_tag }}
         run: |
           set -euo pipefail
-
           git fetch origin gh-pages:gh-pages
-          mkdir -p .tmp
-          git worktree add .tmp/gh-pages gh-pages
+          git worktree add gh-pages-worktree gh-pages
 
-          mkdir -p .tmp/gh-pages/releases
-          cp release-assets/appcast.xml .tmp/gh-pages/appcast.xml
+          mkdir -p gh-pages-worktree/releases
+          cp release-assets/appcast.xml gh-pages-worktree/appcast.xml
 
           if compgen -G "release-assets/*.zip" > /dev/null; then
-            cp release-assets/*.zip .tmp/gh-pages/releases/
-          else
-            echo "No zip asset found in this release. Only appcast.xml will be updated."
+            cp release-assets/*.zip gh-pages-worktree/releases/
           fi
 
-          if [[ ! -f .tmp/gh-pages/index.html ]]; then
-            cat > .tmp/gh-pages/index.html <<'EOF'
+          if [[ ! -f gh-pages-worktree/index.html ]]; then
+            cat > gh-pages-worktree/index.html <<'EOF'
 <!doctype html>
 <html lang="en">
 <head>
@@ -138,24 +116,23 @@ jobs:
 EOF
           fi
 
-          if [[ ! -f .tmp/gh-pages/releases/.gitkeep ]]; then
-            touch .tmp/gh-pages/releases/.gitkeep
+          if [[ ! -f gh-pages-worktree/releases/.gitkeep ]]; then
+            touch gh-pages-worktree/releases/.gitkeep
           fi
 
-          cd .tmp/gh-pages
+          cd gh-pages-worktree
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
           git add appcast.xml releases index.html
+
           if git diff --cached --quiet; then
-            echo "No changes to publish."
             exit 0
           fi
 
           git commit -m "chore(release): sync ${RELEASE_TAG} assets to gh-pages"
           git push origin HEAD:gh-pages
 
-      - name: Cleanup worktree
+      - name: Cleanup
         if: always()
         run: |
-          git worktree remove .tmp/gh-pages --force || true
+          git worktree remove gh-pages-worktree --force || true
