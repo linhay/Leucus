@@ -1,3 +1,4 @@
+import GhosttyKit
 import GhosttyTerminal
 import SwiftUI
 
@@ -22,9 +23,18 @@ public struct SimpleTerminalOptions: Sendable, Equatable {
 }
 
 @MainActor
+private final class SimpleTerminalRuntimeStore {
+  static let shared = SimpleTerminalRuntimeStore()
+  let runtime = GhosttyRuntime()
+
+  private init() {}
+}
+
+@MainActor
 public final class SimpleTerminal {
   public let state: TerminalViewState
   public let title: String
+  let runtime: GhosttyRuntime
 
   public init(
     options: SimpleTerminalOptions = .init(),
@@ -32,9 +42,10 @@ public final class SimpleTerminal {
     terminalConfiguration: TerminalConfiguration = .default
   ) {
     title = options.title
+    runtime = SimpleTerminalRuntimeStore.shared.runtime
     state = TerminalViewState(
       theme: theme,
-      terminalConfiguration: terminalConfiguration
+      terminalConfiguration: terminalConfiguration.backgroundOpacity(1)
     )
     state.configuration = TerminalSurfaceOptions(
       backend: .exec,
@@ -50,8 +61,8 @@ public final class SimpleTerminal {
 public struct SimpleTerminalView: View {
   private let terminal: SimpleTerminal
 
-  public init(terminal: SimpleTerminal = .init()) {
-    self.terminal = terminal
+  public init(terminal: SimpleTerminal? = nil) {
+    self.terminal = terminal ?? .init()
   }
 
   public var body: some View {
@@ -67,16 +78,38 @@ import AppKit
 @available(macOS 14.0, *)
 public final class SimpleTerminalHostView: NSView {
   public let terminal: SimpleTerminal
-  public let terminalView: TerminalView
+  private let surfaceView: GhosttySurfaceView
+  private let surfaceWrapper: GhosttySurfaceScrollView
+  private var lastRefreshSize: CGSize = .zero
+  private var pendingRefreshWorkItem: DispatchWorkItem?
+  public var isLayoutRefreshSuspended = false
 
-  public init(terminal: SimpleTerminal = .init()) {
-    self.terminal = terminal
-    terminalView = TerminalView(frame: .zero)
+  public init(terminal: SimpleTerminal? = nil) {
+    let resolvedTerminal = terminal ?? .init()
+    self.terminal = resolvedTerminal
+
+    let workingDirectoryURL: URL?
+    if let workingDirectory = resolvedTerminal.state.configuration.workingDirectory,
+      !workingDirectory.isEmpty
+    {
+      workingDirectoryURL = URL(fileURLWithPath: workingDirectory, isDirectory: true)
+    } else {
+      workingDirectoryURL = nil
+    }
+
+    surfaceView = GhosttySurfaceView(
+      runtime: resolvedTerminal.runtime,
+      workingDirectory: workingDirectoryURL,
+      initialInput: nil,
+      fontSize: resolvedTerminal.state.configuration.fontSize,
+      context: GHOSTTY_SURFACE_CONTEXT_WINDOW
+    )
+    surfaceWrapper = GhosttySurfaceScrollView(surfaceView: surfaceView)
+
     super.init(frame: .zero)
     wantsLayer = true
     layer?.masksToBounds = true
-    addSubview(terminalView)
-    configure(terminalView)
+    addSubview(surfaceWrapper)
   }
 
   @available(*, unavailable)
@@ -84,21 +117,48 @@ public final class SimpleTerminalHostView: NSView {
     nil
   }
 
-  public override func layout() {
-    super.layout()
-    terminalView.frame = bounds
-    terminalView.fitToSize()
-    if window?.firstResponder !== terminalView {
-      _ = window?.makeFirstResponder(terminalView)
-    }
+  public override func viewDidMoveToWindow() {
+    super.viewDidMoveToWindow()
+    surfaceView.requestFocus()
   }
 
-  private func configure(_ view: TerminalView) {
-    view.delegate = terminal.state
-    view.configuration = terminal.state.configuration
-    if view.controller !== terminal.state.controller {
-      view.controller = terminal.state.controller
+  public override func layout() {
+    super.layout()
+    guard bounds.size != lastRefreshSize else { return }
+    guard !isLayoutRefreshSuspended else {
+      pendingRefreshWorkItem?.cancel()
+      pendingRefreshWorkItem = nil
+      lastRefreshSize = bounds.size
+      surfaceWrapper.frame = bounds
+      surfaceWrapper.pinnedSize = bounds.size
+      surfaceWrapper.needsLayout = true
+      return
     }
+    scheduleRefreshLayout()
+  }
+
+  public func refreshLayout() {
+    pendingRefreshWorkItem?.cancel()
+    pendingRefreshWorkItem = nil
+    applyRefreshLayout()
+  }
+
+  public func scheduleRefreshLayout() {
+    pendingRefreshWorkItem?.cancel()
+    let workItem = DispatchWorkItem { [weak self] in
+      self?.applyRefreshLayout()
+    }
+    pendingRefreshWorkItem = workItem
+    DispatchQueue.main.async(execute: workItem)
+  }
+
+  private func applyRefreshLayout() {
+    lastRefreshSize = bounds.size
+    surfaceWrapper.frame = bounds
+    surfaceWrapper.pinnedSize = bounds.size
+    surfaceWrapper.needsLayout = true
+    surfaceWrapper.layoutSubtreeIfNeeded()
+    surfaceWrapper.updateSurfaceSize()
   }
 }
 
@@ -107,28 +167,12 @@ public final class SimpleTerminalHostView: NSView {
 private struct SimpleTerminalPlatformView: NSViewRepresentable {
   let terminal: SimpleTerminal
 
-  func makeNSView(context _: Context) -> TerminalView {
-    let view = TerminalView(frame: .zero)
-    configure(view)
-    return view
+  func makeNSView(context _: Context) -> SimpleTerminalHostView {
+    SimpleTerminalHostView(terminal: terminal)
   }
 
-  func updateNSView(_ view: TerminalView, context _: Context) {
-    configure(view)
-  }
-
-  private func configure(_ view: TerminalView) {
-    view.delegate = terminal.state
-    view.configuration = terminal.state.configuration
-    if view.controller !== terminal.state.controller {
-      view.controller = terminal.state.controller
-    }
-    DispatchQueue.main.async {
-      view.fitToSize()
-      if view.window?.firstResponder !== view {
-        _ = view.window?.makeFirstResponder(view)
-      }
-    }
+  func updateNSView(_ view: SimpleTerminalHostView, context _: Context) {
+    view.refreshLayout()
   }
 }
 #elseif canImport(UIKit)

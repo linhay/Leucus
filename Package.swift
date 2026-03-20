@@ -30,9 +30,14 @@ let package = Package(
         .target(
             name: "TerminalCard",
             dependencies: [
+                .product(name: "GhosttyKit", package: "libghostty-spm-main"),
                 .product(name: "GhosttyTerminal", package: "libghostty-spm-main"),
             ],
-            path: "Sources/TerminalCard"
+            path: "Sources/TerminalCard",
+            swiftSettings: [
+                .unsafeFlags(["-swift-version", "5"]),
+                .unsafeFlags(["-Xfrontend", "-strict-concurrency=minimal"]),
+            ]
         ),
         .target(
             name: "CanvasKit",

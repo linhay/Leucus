@@ -31,6 +31,8 @@ public final class InfiniteCanvasView: NSView {
     didSet { notifyNodeLayoutsChanged() }
   }
 
+  public var onResizeInteractionChanged: ((Bool) -> Void)?
+
   public var backgroundColor = NSColor(calibratedWhite: 0.09, alpha: 1) {
     didSet { needsDisplay = true }
   }
@@ -132,6 +134,7 @@ public final class InfiniteCanvasView: NSView {
 
     if let resize = resizeHandle(at: point, in: hit.rectInView) {
       hoveredResizeTarget = HoveredResizeTarget(id: hit.node.id, handle: resize)
+      onResizeInteractionChanged?(true)
       interaction = .resizing(
         id: hit.node.id,
         handle: resize,
@@ -209,11 +212,15 @@ public final class InfiniteCanvasView: NSView {
   }
 
   public override func mouseUp(with _: NSEvent) {
+    let wasResizing = isResizingInteraction
     if case let .marquee(start, current) = interaction {
       let worldRect = worldSelectionRect(fromViewStart: start, end: current)
       selectedNodeIDs = InfiniteCanvasKit.selectedNodeIDs(in: worldRect, from: nodes)
     }
     interaction = .idle
+    if wasResizing {
+      onResizeInteractionChanged?(false)
+    }
     if let event = NSApp.currentEvent {
       let point = convert(event.locationInWindow, from: nil)
       updateHoveredResizeTarget(at: point)
@@ -692,6 +699,11 @@ public final class InfiniteCanvasView: NSView {
 
   private func isCompact(node: CanvasNodeCard) -> Bool {
     node.isAtMinimumSize
+  }
+
+  private var isResizingInteraction: Bool {
+    if case .resizing = interaction { return true }
+    return false
   }
 
   private func appendTerminalCard(at worldPoint: CGPoint, workingDirectory: String?, title: String) {

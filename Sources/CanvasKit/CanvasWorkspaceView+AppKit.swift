@@ -10,6 +10,8 @@ public final class CanvasWorkspaceView: NSView {
 
   private let terminalContainer = NSView()
   private var terminalViews: [UUID: SimpleTerminalHostView] = [:]
+  private var isResizingTerminalCard = false
+  private var lastLayouts: [CanvasNodeLayout] = []
 
   public override init(frame frameRect: NSRect) {
     super.init(frame: frameRect)
@@ -41,9 +43,13 @@ public final class CanvasWorkspaceView: NSView {
     canvasView.onNodeLayoutsChanged = { [weak self] layouts in
       self?.syncTerminalCards(with: layouts)
     }
+    canvasView.onResizeInteractionChanged = { [weak self] isResizing in
+      self?.setTerminalResizeSuspended(isResizing)
+    }
   }
 
   private func syncTerminalCards(with layouts: [CanvasNodeLayout]) {
+    lastLayouts = layouts
     let activeLayouts = layouts.filter {
       $0.kind == .terminal &&
         !$0.isCompact &&
@@ -57,10 +63,43 @@ public final class CanvasWorkspaceView: NSView {
       terminalViews[id] = nil
     }
 
+    if isResizingTerminalCard {
+      for layout in activeLayouts {
+        let terminalView = terminalView(for: layout)
+        terminalView.isHidden = true
+      }
+      return
+    }
+
     for layout in activeLayouts {
       let terminalView = terminalView(for: layout)
-      terminalView.frame = layout.contentFrame
+      let nextFrame = layout.contentFrame.integral
+      let sizeChanged = terminalView.frame.size != nextFrame.size
+      if terminalView.frame != nextFrame {
+        terminalView.frame = nextFrame
+      }
+      if !isResizingTerminalCard && sizeChanged {
+        terminalView.scheduleRefreshLayout()
+      }
       terminalView.isHidden = false
+    }
+  }
+
+  private func setTerminalResizeSuspended(_ suspended: Bool) {
+    isResizingTerminalCard = suspended
+    for terminalView in terminalViews.values {
+      terminalView.isLayoutRefreshSuspended = suspended
+      if suspended {
+        terminalView.isHidden = true
+      }
+    }
+    guard !suspended else { return }
+    for terminalView in terminalViews.values {
+      terminalView.isHidden = false
+      terminalView.refreshLayout()
+    }
+    if !lastLayouts.isEmpty {
+      syncTerminalCards(with: lastLayouts)
     }
   }
 

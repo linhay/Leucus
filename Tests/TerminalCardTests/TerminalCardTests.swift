@@ -24,5 +24,15 @@ struct TerminalCardTests {
       #expect(Bool(false))
     }
   }
-}
 
+  #if canImport(AppKit) && !canImport(UIKit)
+  @Test
+  @MainActor
+  func simpleTerminalSharesGhosttyRuntime() {
+    let a = SimpleTerminal(options: .init(title: "A"))
+    let b = SimpleTerminal(options: .init(title: "B"))
+
+    #expect(a.runtime === b.runtime)
+  }
+  #endif
+}
