@@ -1,0 +1,97 @@
+name: Release Signed Sparkle Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release (eg 0.0.6)
+        required: true
+      notes:
+        description: Release notes (optional)
+        required: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: macos-latest
+    env:
+      VERSION: ${{ github.event.inputs.version }}
+      TAG: v${{ github.event.inputs.version }}
+      RELEASE_NOTES: ${{ github.event.inputs.notes }}
+      SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Build release app
+        run: |
+          set -euo pipefail
+          xcodebuild \
+            -project Example/Leucus.xcodeproj \
+            -scheme Leucus \
+            -configuration Release \
+            -destination 'platform=macOS' \
+            build
+
+      - name: Package release archive
+        id: package
+        run: |
+          set -euo pipefail
+          workdir="$(mktemp -d)"
+          archives_dir="${workdir}/archives"
+          mkdir -p "${archives_dir}"
+
+          app_path="$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*Build/Products/Release/Leucus.app' | grep -v 'Index.noindex' | head -n 1)"
+          cp -R "${app_path}" "${workdir}/Leucus.app"
+          (
+            cd "${workdir}"
+            ditto -c -k --sequesterRsrc --keepParent Leucus.app "Leucus-${VERSION}.zip"
+          )
+          cp "${workdir}/Leucus-${VERSION}.zip" "${archives_dir}/Leucus-${VERSION}.zip"
+
+          curl -fsSL "https://linhay.github.io/Leucus/appcast.xml" -o "${archives_dir}/appcast.xml" || true
+
+          echo "workdir=${workdir}" >> "${GITHUB_OUTPUT}"
+          echo "archives_dir=${archives_dir}" >> "${GITHUB_OUTPUT}"
+
+      - name: Generate signed appcast
+        run: |
+          set -euo pipefail
+          if [[ -z "${SPARKLE_PRIVATE_KEY:-}" ]]; then
+            echo "SPARKLE_PRIVATE_KEY secret is missing"
+            exit 1
+          fi
+
+          appcast_bin="$(find "$HOME/Library/Developer/Xcode/DerivedData" -type f -path '*SourcePackages/artifacts/sparkle/Sparkle/bin/generate_appcast' | head -n 1)"
+          if [[ -z "${appcast_bin}" ]]; then
+            echo "generate_appcast not found"
+            exit 1
+          fi
+
+          printf '%s' "${SPARKLE_PRIVATE_KEY}" | "${appcast_bin}" \
+            --ed-key-file - \
+            --download-url-prefix "https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}/" \
+            --link "https://github.com/${GITHUB_REPOSITORY}" \
+            "${{ steps.package.outputs.archives_dir }}"
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          zip_path="${{ steps.package.outputs.archives_dir }}/Leucus-${VERSION}.zip"
+          appcast_path="${{ steps.package.outputs.archives_dir }}/appcast.xml"
+
+          if gh release view "${TAG}" >/dev/null 2>&1; then
+            gh release upload "${TAG}" "${zip_path}" "${appcast_path}" --clobber
+          else
+            notes="${RELEASE_NOTES:-Signed Sparkle release ${VERSION}.}"
+            gh release create "${TAG}" \
+              "${zip_path}" \
+              "${appcast_path}" \
+              --title "Leucus ${VERSION}" \
+              --notes "${notes}"
+          fi

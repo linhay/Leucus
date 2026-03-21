@@ -26,4 +26,22 @@ public enum LeucusUpdateConfiguration {
     guard let value = infoDictionary[publicKeyInfoKey] as? String else { return false }
     return !value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
   }
+
+  public static func validatedPublicKey(in infoDictionary: [String: Any]) -> String? {
+    guard let value = infoDictionary[publicKeyInfoKey] as? String else { return nil }
+    return validatedPublicKey(from: value)
+  }
+
+  public static func validatedPublicKey(from value: String?) -> String? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard
+      !trimmed.isEmpty,
+      let decoded = Data(base64Encoded: trimmed),
+      decoded.count == 32
+    else {
+      return nil
+    }
+    return trimmed
+  }
 }

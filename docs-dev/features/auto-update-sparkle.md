@@ -7,7 +7,7 @@
 1. 在 `Leucus` 示例工程集成 Sparkle。
 2. 应用菜单提供“检查更新…”入口。
 3. 默认启用自动检查更新（可下载由 Sparkle 自身策略控制）。
-4. 通过 `Info.plist` 注入升级配置（`SUFeedURL`、`SUPublicEDKey`）。
+4. 通过 `Info.plist` 注入升级配置（`SUFeedURL`、`SUPublicEDKey`），且公钥必须为可解码的 EdDSA Base64（32 字节公钥）。
 
 ## BDD 场景
 1. Given 应用已配置 `SUFeedURL`
@@ -26,7 +26,11 @@
    When 解析升级配置
    Then 仅接受可解析为 `http/https` 的 URL，其余视为未配置
 
-5. Given 已发布 GitHub Release（包含 `appcast.xml` 与 `.zip`）
+5. Given `SUPublicEDKey` 缺失、空值或格式无效
+   When 应用启动
+   Then Updater 不应启动，且“检查更新…”应置灰，避免 Sparkle 在启动阶段 fatal
+
+6. Given 已发布 GitHub Release（包含带 `sparkle:edSignature` 的 `appcast.xml` 与 `.zip`）
    When `Sync Release Assets To Pages` 工作流触发
    Then 资产应自动同步到 `gh-pages`（`/appcast.xml` 与 `/releases/*.zip`）
 
@@ -36,7 +40,9 @@
 3. 有效 `SUFeedURL` 时菜单可点击并触发 `checkForUpdates`。
 4. `SUFeedURL` 无效或缺失时菜单不可点击。
 5. URL 解析逻辑有自动化测试覆盖。
-6. GitHub Release 发布后可自动同步 Sparkle 资产到 GitHub Pages。
+6. 公钥格式校验逻辑有自动化测试覆盖。
+7. GitHub Release 发布后可自动同步 Sparkle 资产到 GitHub Pages。
+8. appcast 新增条目包含 `sparkle:edSignature`。
 
 ## 配置说明
 1. `LEUCUS_GITHUB_OWNER`：GitHub 用户或组织名（默认 `linhay`）。

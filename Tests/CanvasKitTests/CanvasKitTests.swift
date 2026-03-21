@@ -1,5 +1,6 @@
 #if canImport(AppKit) && !canImport(UIKit)
 import AppKit
+import CardHubService
 import FolderCard
 import InfiniteCanvasKit
 import Testing
@@ -50,6 +51,33 @@ struct CanvasKitTests {
       LeucusUpdateConfiguration.hasPublicKey(in: [
         LeucusUpdateConfiguration.publicKeyInfoKey: "AbCdEf123",
       ])
+    )
+  }
+
+  @Test
+  func leucusUpdatePublicKeyShouldRequireValidBase64EncodedEdDSAKey() {
+    #expect(
+      LeucusUpdateConfiguration.validatedPublicKey(in: [:]) == nil
+    )
+    #expect(
+      LeucusUpdateConfiguration.validatedPublicKey(in: [
+        LeucusUpdateConfiguration.publicKeyInfoKey: "   ",
+      ]) == nil
+    )
+    #expect(
+      LeucusUpdateConfiguration.validatedPublicKey(in: [
+        LeucusUpdateConfiguration.publicKeyInfoKey: "not-base64",
+      ]) == nil
+    )
+    #expect(
+      LeucusUpdateConfiguration.validatedPublicKey(in: [
+        LeucusUpdateConfiguration.publicKeyInfoKey: "c2hvcnQ=",
+      ]) == nil
+    )
+    #expect(
+      LeucusUpdateConfiguration.validatedPublicKey(in: [
+        LeucusUpdateConfiguration.publicKeyInfoKey: "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA=",
+      ]) == "AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="
     )
   }
 
@@ -134,12 +162,120 @@ struct CanvasKitTests {
     #expect(hostBefore.window !== workspace.window)
   }
 
+  @Test
+  @MainActor
+  func workspaceShouldNotContainGlobalAutoCardSizeControl() {
+    let workspace = CanvasWorkspaceView(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
+    workspace.layoutSubtreeIfNeeded()
+
+    #expect(autoCardSizePopup(in: workspace) == nil)
+  }
+
+  @Test
+  @MainActor
+  func workspaceShouldRenderWebHostViewForWebNode() {
+    let workspace = CanvasWorkspaceView(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
+    let node = CanvasNodeCard.web(
+      at: .zero,
+      webURL: nil,
+      title: "Example"
+    )
+    workspace.canvasView.nodes = [node]
+    workspace.layoutSubtreeIfNeeded()
+
+    #expect(firstWebHostView(in: workspace) != nil)
+  }
+
+  @Test
+  @MainActor
+  func workspaceShouldApplyHubSetTitleCommand() {
+    let workspace = CanvasWorkspaceView(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
+    var node = CanvasNodeCard.web(
+      at: .zero,
+      webURL: "https://example.com",
+      title: "Before"
+    )
+    let targetID = node.id
+    workspace.canvasView.nodes = [node]
+    workspace.layoutSubtreeIfNeeded()
+
+    let command = CardControlCommand(
+      sourceCardID: nil,
+      targetCardID: targetID,
+      action: "set-title",
+      value: "After",
+      metadata: nil
+    )
+    workspace.applyHubCommand(command)
+
+    node = workspace.canvasView.nodes[0]
+    #expect(node.title == "After")
+  }
+
+  @Test
+  @MainActor
+  func workspaceShouldPollAndApplyHubCommand() async {
+    let workspace = CanvasWorkspaceView(frame: CGRect(x: 0, y: 0, width: 900, height: 700))
+    var node = CanvasNodeCard.web(
+      at: .zero,
+      webURL: "https://example.com",
+      title: "Before"
+    )
+    let targetID = node.id
+    workspace.canvasView.nodes = [node]
+    workspace.layoutSubtreeIfNeeded()
+
+    let center = CardCommandCenter()
+    workspace.attachCommandHub(center, pollInterval: 0.05)
+    defer { workspace.detachCommandHub() }
+
+    let command = CardControlCommand(
+      sourceCardID: nil,
+      targetCardID: targetID,
+      action: "set-title",
+      value: "AfterPolling",
+      metadata: nil
+    )
+    await center.enqueue(command)
+    try? await Task.sleep(nanoseconds: 250_000_000)
+
+    node = workspace.canvasView.nodes[0]
+    #expect(node.title == "AfterPolling")
+  }
+
   private func firstFolderHostView(in root: NSView) -> FolderBrowserHostView? {
     if let host = root as? FolderBrowserHostView {
       return host
     }
     for child in root.subviews {
       if let host = firstFolderHostView(in: child) {
+        return host
+      }
+    }
+    return nil
+  }
+
+  private func autoCardSizePopup(in root: NSView) -> NSPopUpButton? {
+    if
+      let popup = root as? NSPopUpButton,
+      popup.itemTitles.first == "自动卡片尺寸"
+    {
+      return popup
+    }
+    for child in root.subviews {
+      if let popup = autoCardSizePopup(in: child) {
+        return popup
+      }
+    }
+    return nil
+  }
+
+  private func firstWebHostView(in root: NSView) -> SimpleWebCardHostView? {
+    if let host = root as? SimpleWebCardHostView {
+      return host
+    }
+    for child in root.subviews {
+      if let host = firstWebHostView(in: child) {
         return host
       }
     }

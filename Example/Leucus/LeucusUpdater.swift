@@ -14,13 +14,14 @@ final class LeucusUpdater: NSObject {
             isConfigured = false
             return
         }
+        guard let _ = LeucusUpdateConfiguration.validatedPublicKey(in: infoDictionary) else {
+            isConfigured = false
+            NSLog("Leucus auto-update warning: SUPublicEDKey is missing or invalid; updater disabled.")
+            return
+        }
 
         self.feedURL = feedURL
         isConfigured = true
-
-        if !LeucusUpdateConfiguration.hasPublicKey(in: infoDictionary) {
-            NSLog("Leucus auto-update warning: SUPublicEDKey is empty, update verification may fail.")
-        }
 
         let controller = SPUStandardUpdaterController(
             startingUpdater: true,
