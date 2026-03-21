@@ -1,0 +1,304 @@
+openapi: 3.1.0
+info:
+  title: Canvas Card Hub API
+  version: 1.0.0
+  description: |
+    CanvasTerminalKit 卡片中枢控制 API。
+    推荐使用 /api/v1 版本化路由；/api 下旧路由仅做兼容。
+servers:
+  - url: http://127.0.0.1:28080
+paths:
+  /api/v1/health:
+    get:
+      summary: 健康检查
+      responses:
+        '200':
+          description: OK
+
+  /api/v1/spaces/{spaceID}/commands:
+    post:
+      summary: 向画布投递命令
+      parameters:
+        - in: path
+          name: spaceID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardControlCommandRequest'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+
+  /api/v1/spaces/{spaceID}/cards/{cardID}/commands:
+    get:
+      summary: 拉取并消费卡片命令
+      parameters:
+        - in: path
+          name: spaceID
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: cardID
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            default: 50
+      responses:
+        '200':
+          description: 命令列表
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CardControlCommand'
+        '400':
+          description: Bad Request
+
+  /api/v1/spaces/{spaceID}/cards/{cardID}/routes:
+    get:
+      summary: 获取卡片动作路由描述
+      parameters:
+        - in: path
+          name: spaceID
+          required: true
+          schema:
+            type: string
+            format: uuid
+        - in: path
+          name: cardID
+          required: true
+          schema:
+            type: string
+            format: uuid
+      responses:
+        '200':
+          description: 路由发现结果
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CardRouteDiscoveryResponse'
+        '400':
+          description: Bad Request
+
+  /api/v1/spaces/{spaceID}/cards/{cardID}/actions/select:
+    post:
+      summary: 选中卡片
+      parameters:
+        - $ref: '#/components/parameters/SpaceID'
+        - $ref: '#/components/parameters/CardID'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardControlRouteRequest'
+      responses:
+        '202':
+          description: Accepted
+
+  /api/v1/spaces/{spaceID}/cards/{cardID}/actions/close:
+    post:
+      summary: 关闭卡片
+      parameters:
+        - $ref: '#/components/parameters/SpaceID'
+        - $ref: '#/components/parameters/CardID'
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardControlRouteRequest'
+      responses:
+        '202':
+          description: Accepted
+
+  /api/v1/spaces/{spaceID}/cards/{cardID}/actions/title:
+    post:
+      summary: 设置标题
+      parameters:
+        - $ref: '#/components/parameters/SpaceID'
+        - $ref: '#/components/parameters/CardID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardControlRouteValueRequest'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+
+  /api/v1/spaces/{spaceID}/cards/{cardID}/actions/url:
+    post:
+      summary: 设置网页 URL
+      parameters:
+        - $ref: '#/components/parameters/SpaceID'
+        - $ref: '#/components/parameters/CardID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardControlRouteValueRequest'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+
+  /api/v1/spaces/{spaceID}/cards/{cardID}/actions/directory:
+    post:
+      summary: 设置目录
+      parameters:
+        - $ref: '#/components/parameters/SpaceID'
+        - $ref: '#/components/parameters/CardID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CardControlRouteValueRequest'
+      responses:
+        '202':
+          description: Accepted
+        '400':
+          description: Bad Request
+
+components:
+  parameters:
+    SpaceID:
+      in: path
+      name: spaceID
+      required: true
+      schema:
+        type: string
+        format: uuid
+    CardID:
+      in: path
+      name: cardID
+      required: true
+      schema:
+        type: string
+        format: uuid
+
+  schemas:
+    CardControlRouteRequest:
+      type: object
+      properties:
+        sourceCardID:
+          type: string
+          format: uuid
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    CardControlRouteValueRequest:
+      type: object
+      required: [value]
+      properties:
+        sourceCardID:
+          type: string
+          format: uuid
+        value:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    CardControlCommandRequest:
+      type: object
+      required: [targetCardID, action]
+      properties:
+        sourceCardID:
+          type: string
+          format: uuid
+        targetCardID:
+          type: string
+          format: uuid
+        action:
+          type: string
+        value:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+
+    CardControlCommand:
+      type: object
+      required: [spaceID, targetCardID, action, issuedAt]
+      properties:
+        spaceID:
+          type: string
+          format: uuid
+        sourceCardID:
+          type: string
+          format: uuid
+        targetCardID:
+          type: string
+          format: uuid
+        action:
+          type: string
+        value:
+          type: string
+        metadata:
+          type: object
+          additionalProperties:
+            type: string
+        issuedAt:
+          type: string
+          format: date-time
+
+    CardRouteActionDescriptor:
+      type: object
+      required: [action, method, pathTemplate, mappedCommandAction, requiresValue, scope]
+      properties:
+        action:
+          type: string
+        method:
+          type: string
+        pathTemplate:
+          type: string
+        mappedCommandAction:
+          type: string
+        requiresValue:
+          type: boolean
+        scope:
+          type: string
+
+    CardRouteDiscoveryResponse:
+      type: object
+      required: [spaceID, cardID, routes]
+      properties:
+        spaceID:
+          type: string
+          format: uuid
+        cardID:
+          type: string
+          format: uuid
+        routes:
+          type: array
+          items:
+            $ref: '#/components/schemas/CardRouteActionDescriptor'
