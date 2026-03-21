@@ -8,6 +8,16 @@
     <description>Leucus release feed</description>
     <language>en</language>
     <item>
+      <title>Leucus 0.0.4</title>
+      <pubDate>Sat, 21 Mar 2026 09:19:07 +0000</pubDate>
+      <enclosure
+        url="https://github.com/linhay/Leucus/releases/download/v0.0.4/Leucus-0.0.4.zip"
+        sparkle:version="4"
+        sparkle:shortVersionString="0.0.4"
+        length="9624353"
+        type="application/octet-stream" />
+    </item>
+    <item>
       <title>Leucus 0.0.2</title>
       <pubDate>Fri, 20 Mar 2026 17:48:26 +0000</pubDate>
       <enclosure
