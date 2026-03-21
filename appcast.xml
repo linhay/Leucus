@@ -13,7 +13,7 @@
             <sparkle:shortVersionString>0.0.5</sparkle:shortVersionString>
             <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
             <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
-            <enclosure url="https://github.com/linhay/Leucus/releases/download/v0.0.5/Leucus-0.0.5.zip" length="9643722" type="application/octet-stream" sparkle:edSignature="SP4M8puvbFqHWabgJD2RiCLNEDTMKLnyuh5/zNynN/n3VD3GVRPfi6yT4+1VAM4CkiIzeOi2GQiUDbTIL80cDw=="/>
+            <enclosure url="https://github.com/linhay/Leucus/releases/download/v0.0.2/Leucus-0.0.2.zip" length="20305314" type="application/octet-stream" sparkle:edSignature="GTAiI+FSBEWdtycmxIx9ANmSL5KyeUkS+JlavDt76aQuRFbZ8QSgoR9ymMzO6H3hQdIs3WCPM0Bx8UoTfPiwBg=="/>
         </item>
         <item>
             <title>Leucus 0.0.4</title>
