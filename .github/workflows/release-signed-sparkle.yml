@@ -53,6 +53,9 @@ jobs:
 
           app_path="$(find "$HOME/Library/Developer/Xcode/DerivedData" -type d -path '*Build/Products/Release/Leucus.app' | grep -v 'Index.noindex' | head -n 1)"
           cp -R "${app_path}" "${workdir}/Leucus.app"
+          # Sparkle appcast generation requires the app bundle to pass code-signing validation.
+          codesign --force --deep --sign - "${workdir}/Leucus.app"
+          codesign --verify --deep --strict "${workdir}/Leucus.app"
           (
             cd "${workdir}"
             ditto -c -k --sequesterRsrc --keepParent Leucus.app "Leucus-${VERSION}.zip"
