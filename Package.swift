@@ -33,7 +33,7 @@ let package = Package(
         ),
     ],
     dependencies: [
-        .package(url: "https://github.com/linhay/libghostty.git", exact: "0.0.1"),
+        .package(url: "https://github.com/linhay/libghostty.git", exact: "0.0.2"),
         .package(url: "https://github.com/linhay/STFilePath.git", from: "1.3.0"),
         .package(url: "https://github.com/sindresorhus/KeyboardShortcuts.git", from: "2.3.0"),
         .package(url: "https://github.com/vapor/vapor.git", from: "4.106.0"),
