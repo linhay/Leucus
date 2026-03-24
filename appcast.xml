@@ -6,6 +6,16 @@
         <description>Leucus release feed</description>
         <language>en</language>
         <item>
+            <title>0.0.6</title>
+            <pubDate>Tue, 24 Mar 2026 22:10:28 +0800</pubDate>
+            <link>https://github.com/linhay/Leucus</link>
+            <sparkle:version>6</sparkle:version>
+            <sparkle:shortVersionString>0.0.6</sparkle:shortVersionString>
+            <sparkle:minimumSystemVersion>14.0</sparkle:minimumSystemVersion>
+            <sparkle:hardwareRequirements>arm64</sparkle:hardwareRequirements>
+            <enclosure url="https://github.com/linhay/Leucus/releases/download/v0.0.6/Leucus-0.0.6.zip" length="20420498" type="application/octet-stream" sparkle:edSignature="d80n6I4MKHz086/mAWZLYNCnZ5IwCN7jGNkIkWL75BoclxnkV97Y68cmKFO6+FswmNBXTQNb+SXjnX5Tn/sGAQ=="/>
+        </item>
+        <item>
             <title>0.0.5</title>
             <pubDate>Sat, 21 Mar 2026 17:41:38 +0800</pubDate>
             <link>https://github.com/linhay/Leucus</link>
